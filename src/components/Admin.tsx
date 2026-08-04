@@ -388,59 +388,76 @@ export default function Admin({ onExit }: AdminProps) {
     let name: string | undefined;
     let lat: number | undefined;
     let lng: number | undefined;
+    let photoUrl: string | undefined;
 
-    // 1. Priority 1: Exact Place Pin coordinates in Google Maps URL (!3d<lat>!4d<lng>)
-    const pinRegex = /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/;
-    const pinMatch = input.match(pinRegex);
+    let decodedInput = input;
+    try {
+      decodedInput = decodeURIComponent(input);
+    } catch {
+      // ignore
+    }
+
+    // 1. Priority 1: Exact Place Pin coordinates in Google Maps URL (!3d<lat>!4d<lng> or 3d<lat>!4d<lng>)
+    const pinMatch = decodedInput.match(/3d(-?\d+\.\d+)[!&]?4d(-?\d+\.\d+)/i);
     if (pinMatch) {
       lat = parseFloat(pinMatch[1]);
       lng = parseFloat(pinMatch[2]);
     }
 
-    // 2. Priority 2: Direct query param coordinates (q=lat,lng or ll=lat,lng)
-    if (!lat) {
-      const queryCoordRegex = /[?&](?:q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/;
-      const queryMatch = input.match(queryCoordRegex);
+    // 2. Priority 2: Reversed pin parameters (2d<lng>!3d<lat>)
+    if (lat === undefined || lng === undefined) {
+      const revPinMatch = decodedInput.match(/2d(-?\d+\.\d+)[!&]?3d(-?\d+\.\d+)/i);
+      if (revPinMatch) {
+        lng = parseFloat(revPinMatch[1]);
+        lat = parseFloat(revPinMatch[2]);
+      }
+    }
+
+    // 3. Priority 3: Direct query param coordinates (q=lat,lng or ll=lat,lng or search/lat,lng or dir/lat,lng)
+    if (lat === undefined || lng === undefined) {
+      const queryMatch = decodedInput.match(/(?:[?&](?:q|ll)=(?:loc:)?|search\/|dir\/)(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/i);
       if (queryMatch) {
         lat = parseFloat(queryMatch[1]);
         lng = parseFloat(queryMatch[2]);
       }
     }
 
-    // 3. Priority 3: Plain coordinates text (e.g. "-4.9471, -37.9745")
-    if (!lat) {
-      const plainCoordRegex = /^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/;
-      const plainMatch = input.trim().match(plainCoordRegex);
-      if (plainMatch) {
-        lat = parseFloat(plainMatch[1]);
-        lng = parseFloat(plainMatch[2]);
-      }
-    }
-
     // 4. Priority 4: Viewport camera center (@lat,lng) - used as fallback
-    if (!lat) {
-      const viewportRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
-      const viewportMatch = input.match(viewportRegex);
+    if (lat === undefined || lng === undefined) {
+      const viewportMatch = decodedInput.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
       if (viewportMatch) {
         lat = parseFloat(viewportMatch[1]);
         lng = parseFloat(viewportMatch[2]);
       }
     }
 
-    // 5. Extract place name from URL (/place/Name+Of+Place/)
+    // 5. Priority 5: Plain decimal coordinates in text (e.g. "-4.9471, -37.9745" or embedded in string)
+    if (lat === undefined || lng === undefined) {
+      const coordMatches = [...decodedInput.matchAll(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/g)];
+      for (const match of coordMatches) {
+        const candidateLat = parseFloat(match[1]);
+        const candidateLng = parseFloat(match[2]);
+        if (candidateLat >= -90 && candidateLat <= 90 && candidateLng >= -180 && candidateLng <= 180) {
+          lat = candidateLat;
+          lng = candidateLng;
+          break;
+        }
+      }
+    }
+
+    // 6. Extract place name from URL (/place/Name+Of+Place/)
     const placeNameRegex = /\/place\/([^/@?]+)/;
-    const placeMatch = input.match(placeNameRegex);
+    const placeMatch = decodedInput.match(placeNameRegex);
     if (placeMatch) {
-      const rawName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+      const rawName = placeMatch[1].replace(/\+/g, ' ').trim();
       if (rawName && !rawName.startsWith('http')) {
         name = rawName;
       }
     }
 
-    // 6. Extract Google Photo ID if present in link (AF1Qip...)
-    let photoUrl: string | undefined;
+    // 7. Extract Google Photo ID if present in link
     const photoIdRegex = /(AF1Qip[A-Za-z0-9_-]{15,})/;
-    const photoMatch = input.match(photoIdRegex);
+    const photoMatch = decodedInput.match(photoIdRegex);
     if (photoMatch) {
       photoUrl = `https://lh3.googleusercontent.com/p/${photoMatch[1]}=w800-h600`;
     }
@@ -457,24 +474,83 @@ export default function Admin({ onExit }: AdminProps) {
 
     setAutoFilling(true);
 
-    if (rawInput.includes('goo.gl') || rawInput.includes('maps.app')) {
+    let htmlContent = '';
+
+    if (rawInput.includes('goo.gl') || rawInput.includes('maps.app') || rawInput.includes('maps.g') || rawInput.startsWith('http')) {
       try {
         const proxyRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rawInput)}`);
         const proxyData = await proxyRes.json();
-        if (proxyData && proxyData.status?.url) {
-          rawInput = proxyData.status.url;
+        if (proxyData) {
+          if (proxyData.status?.url) {
+            rawInput += ' ' + proxyData.status.url;
+          }
+          if (proxyData.contents) {
+            htmlContent += ' ' + proxyData.contents;
+          }
         }
       } catch {
         // ignore
       }
 
-      if (!rawInput.includes('AF1Qip')) {
+      if (!htmlContent) {
         try {
-          const corsRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(rawInput)}`);
-          const htmlText = await corsRes.text();
-          const matchPhoto = htmlText.match(/(AF1Qip[A-Za-z0-9_-]{15,})/);
-          if (matchPhoto && matchPhoto[1]) {
-            rawInput += ` !1s${matchPhoto[1]}`;
+          const corsRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(autoFillInput.trim())}`);
+          const text = await corsRes.text();
+          htmlContent += ' ' + text;
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    const combinedText = `${rawInput} ${htmlContent}`;
+    const parsed = parseGoogleMapsInput(combinedText);
+
+    let nameToUse = parsed.name || (rawInput.startsWith('http') ? '' : rawInput);
+    if (!nameToUse && rawInput.includes('/place/')) {
+      const match = rawInput.match(/\/place\/([^/@?]+)/);
+      if (match) {
+        try {
+          nameToUse = decodeURIComponent(match[1].replace(/\+/g, ' '));
+        } catch {
+          nameToUse = match[1].replace(/\+/g, ' ');
+        }
+      }
+    }
+
+    let foundLat = parsed.lat;
+    let foundLng = parsed.lng;
+    let foundAddress = '';
+
+    if (foundLat !== undefined && foundLng !== undefined) {
+      foundAddress = await fetchAddressFromCoords(foundLat, foundLng);
+    } else {
+      const cleanQuery = (nameToUse || autoFillInput.trim()).replace(/https?:\/\/\S+/g, '').trim();
+
+      if (cleanQuery) {
+        try {
+          let response = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+              `${cleanQuery} Russas Ceara`
+            )}&format=json&limit=1`
+          );
+          let data = await response.json();
+          if (!data || data.length === 0) {
+            response = await fetch(
+              `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+                `${cleanQuery} Ceara`
+              )}&format=json&limit=1`
+            );
+            data = await response.json();
+          }
+
+          if (data && data.length > 0) {
+            foundLat = parseFloat(data[0].lat);
+            foundLng = parseFloat(data[0].lon);
+            foundAddress = await fetchAddressFromCoords(foundLat, foundLng);
+            if (!nameToUse) {
+              nameToUse = data[0].display_name.split(',')[0];
+            }
           }
         } catch {
           // ignore
@@ -482,39 +558,17 @@ export default function Admin({ onExit }: AdminProps) {
       }
     }
 
-    const parsed = parseGoogleMapsInput(rawInput);
-    let nameToUse = parsed.name || (rawInput.startsWith('http') ? '' : rawInput);
-    let foundLat = parsed.lat;
-    let foundLng = parsed.lng;
-    let foundAddress = 'Campus da UFC em Russas, CE';
-
-    if (foundLat !== undefined && foundLng !== undefined) {
-      foundAddress = await fetchAddressFromCoords(foundLat, foundLng);
-    } else {
-      try {
-        const queryText = nameToUse || rawInput;
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-            `${queryText} Russas Ceara`
-          )}&format=json&limit=1`
-        );
-        const data = await response.json();
-        if (data && data.length > 0) {
-          foundLat = parseFloat(data[0].lat);
-          foundLng = parseFloat(data[0].lon);
-          foundAddress = await fetchAddressFromCoords(foundLat, foundLng);
-          if (!nameToUse) {
-            nameToUse = data[0].display_name.split(',')[0];
-          }
-        }
-      } catch {
-        // ignore
-      }
+    let positionWasMissing = false;
+    if (foundLat === undefined || foundLng === undefined) {
+      foundLat = parseFloat(form.lat) || UNIVERSITY.lat;
+      foundLng = parseFloat(form.lng) || UNIVERSITY.lng;
+      positionWasMissing = true;
     }
 
-    if (foundLat === undefined || foundLng === undefined) {
-      foundLat = UNIVERSITY.lat;
-      foundLng = UNIVERSITY.lng;
+    if (positionWasMissing) {
+      alert(
+        '⚠️ Não foi possível extrair a localização exata deste link ou texto de busca.\n\nA posição atual do mapa foi mantida. Você pode clicar no mapa para definir o pino onde desejar.'
+      );
     }
 
     const detectedFromLocation = await detectCategoryFromCoords(foundLat, foundLng);
@@ -553,7 +607,8 @@ export default function Admin({ onExit }: AdminProps) {
 
     let photoToUse = parsed.photoUrl || '';
     if (!photoToUse && (rawInput.includes('.jpg') || rawInput.includes('.png') || rawInput.includes('.webp') || rawInput.includes('googleusercontent.com'))) {
-      photoToUse = rawInput;
+      const photoMatch = rawInput.match(/(https?:\/\/\S+\.(?:jpg|png|webp)|https?:\/\/lh3\.googleusercontent\.com\/\S+)/i);
+      if (photoMatch) photoToUse = photoMatch[1];
     }
 
     setForm((prev) => ({
@@ -562,7 +617,7 @@ export default function Admin({ onExit }: AdminProps) {
       category_id: matchedCat ? matchedCat.id : prev.category_id,
       lat: String(foundLat),
       lng: String(foundLng),
-      address: foundAddress,
+      address: foundAddress || prev.address || 'Russas - CE',
       description: prev.description || `Local cadastrado em Russas, CE.`,
       photos: photoToUse || prev.photos || '',
     }));
@@ -1086,36 +1141,34 @@ export default function Admin({ onExit }: AdminProps) {
             </div>
 
             {/* Auto-Fill Assistant Card */}
-            {!editingId && (
-              <div className="mb-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white shadow-md">
-                <div className="mb-1 flex items-center gap-1.5 text-sm font-bold">
-                  <Zap className="h-4 w-4 fill-amber-300 text-amber-300" />
-                  Assistente de Auto-Preenchimento Rápido
-                </div>
-                <p className="mb-3 text-xs text-blue-100">
-                  Cole o link do Google Maps, coordenadas (-4.947, -37.974) ou o nome do lugar:
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Cole o link do Google Maps ou digite o nome..."
-                    value={autoFillInput}
-                    onChange={(e) => setAutoFillInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAutoFill())}
-                    className="flex-1 rounded-xl border-0 bg-white/90 px-3.5 py-2 text-sm text-gray-800 outline-none placeholder:text-gray-400 focus:bg-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAutoFill}
-                    disabled={autoFilling}
-                    className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-gray-900 transition hover:bg-amber-300 disabled:opacity-50 shadow-sm"
-                  >
-                    {autoFilling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 fill-gray-900" />}
-                    Auto-Preencher
-                  </button>
-                </div>
+            <div className="mb-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white shadow-md">
+              <div className="mb-1 flex items-center gap-1.5 text-sm font-bold">
+                <Zap className="h-4 w-4 fill-amber-300 text-amber-300" />
+                Assistente de Auto-Preenchimento Rápido
               </div>
-            )}
+              <p className="mb-3 text-xs text-blue-100">
+                Cole o link do Google Maps, coordenadas (-4.947, -37.974) ou o nome do lugar para atualizar os campos:
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Cole o link do Google Maps ou digite o nome..."
+                  value={autoFillInput}
+                  onChange={(e) => setAutoFillInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAutoFill())}
+                  className="flex-1 rounded-xl border-0 bg-white/90 px-3.5 py-2 text-sm text-gray-800 outline-none placeholder:text-gray-400 focus:bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={handleAutoFill}
+                  disabled={autoFilling}
+                  className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-gray-900 transition hover:bg-amber-300 disabled:opacity-50 shadow-sm"
+                >
+                  {autoFilling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 fill-gray-900" />}
+                  Auto-Preencher
+                </button>
+              </div>
+            </div>
 
             <div className="space-y-4">
               {/* Nome e Categoria */}
