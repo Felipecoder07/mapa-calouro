@@ -1,0 +1,131 @@
+# Documento de Requisitos do Sistema (SRS)
+## Sistema: Mapa do Calouro - UFC Campus Russas
+
+> [!NOTE]
+> Este documento especifica todos os requisitos funcionais, não-funcionais, regras de negócio e arquitetura técnica do sistema **Mapa do Calouro**, um guia geográfico e comunitário interativo voltado para novos estudantes do Campus UFC Russas.
+
+---
+
+## 1. Visão Geral do Sistema
+
+O **Mapa do Calouro** é uma aplicação web interativa (Single Page Application - SPA) desenvolvida para facilitar a adaptação e localização espacial de calouros e veteranos no campus universitário da UFC Russas e no município de Russas - CE. 
+
+A plataforma oferece visualização de pontos de interesse (restaurantes, bibliotecas, pontos de ônibus, moradias, farmácias, etc.), cálculo de rotas em tempo real com regras de trânsito locais, sistema comunitário de avaliações e painel administrativo para gestão do mapa.
+
+### 1.1 Stack Tecnológica
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Lucide Icons.
+- **Mapeamento & Geoprocessamento:** Leaflet, React-Leaflet, OSRM API (Open Source Routing Machine).
+- **Backend & Persistência:** Node.js, Express, SQLite (`better-sqlite3`), com suporte a Supabase na nuvem e `localStorage` como fallback local.
+- **Túnel de Conectividade:** Cloudflare Tunnel (`cloudflared`).
+
+---
+
+## 2. Requisitos Funcionais (RF)
+
+### 2.1 Mapeamento e Visualização Geográfica
+* **[RF01] Visualização do Mapa Interativo:**
+  - O sistema deve exibir um mapa interativo em tela cheia alimentado por OpenStreetMap via Leaflet.
+  - O marcador central da universidade deve ser posicionado nas coordenadas oficiais do campus ([constants.ts](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/lib/constants.ts)): `Lat: -4.9471, Lng: -37.9745`.
+  - Cada local cadastrado deve exibir um pino no mapa com a cor e ícone representativo da sua categoria.
+
+* **[RF02] Filtros e Busca de Locais:**
+  - O sistema deve permitir a busca textual por nome, endereço ou palavras-chave do local.
+  - O sistema deve permitir a filtragem por múltiplas categorias de locais (ex: Alimentação, Bibliotecas, Saúde, Moradia, Transporte).
+  - O sistema deve permitir a exibição exclusiva de locais marcados como **Favoritos** pelo usuário.
+
+### 2.2 Rotas e Cálculo de Distâncias
+* **[RF03] Seleção de Origem e Destino:**
+  - O sistema deve oferecer duas origens padrão para rotas:
+    1. **Da UFC Russas:** Utiliza como ponto inicial a portaria/saída oficial da universidade na Rua Felipe Santiago (`Lat: -4.945620, Lng: -37.975554`).
+    2. **De você (GPS):** Utiliza a localização física atual obtida via GPS do dispositivo do usuário.
+
+* **[RF04] Modos de Transporte e Regras de Vias:**
+  - **Modo Pedestre (A pé):** Calcula a menor rota para caminhadas, permitindo travessias e atalhos de pedestres, calculando tempo médio a 5 km/h.
+  - **Modo Automóvel (Carro/Moto):** Utiliza o perfil veicular da API OSRM, respeitando obrigatoriamente sentidos de vias de mão única (`oneway`), conversões permitidas e regras de trânsito veicular.
+
+* **[RF05] Padronização Dinâmica de Distâncias:**
+  - Quando a localização do usuário (GPS) estiver **desativada**, todas as distâncias listadas nos cards e detalhes devem ser calculadas em relação ao campus da **UFC Russas**.
+  - Quando o usuário **ativar sua localização GPS**, a plataforma deve oferecer no card do local as abas de seleção `[ 🏛️ Da UFC | 📍 De você ]`, recalculando os tempos e distâncias para cada origem selecionada de forma independente.
+
+* **[RF06] Banner Flutuante de Rota e Fechamento de Card:**
+  - Ao clicar para traçar uma rota ("Da universidade" ou "De você"), o painel lateral de detalhes do local deve ser **fechado automaticamente**, desobstruindo a visão do mapa.
+  - Um banner flutuante no topo do mapa deve exibir a rota ativa (ex: `Da UFC Russas → Restaurante Universitário`), permitindo alternar os modos (`A pé` / `Automóvel`) e botão para encerrar a rota.
+
+### 2.3 Detalhes e Avaliações Comunitárias
+* **[RF07] Exibição de Detalhes do Local:**
+  - O card de detalhes ([PlaceDetails.tsx](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/components/PlaceDetails.tsx)) deve exibir fotos, endereço, horário de funcionamento, telefone de contato, descrição e média geral de avaliações (estrelas).
+  - Deve fornecer atalho para abrir a navegação externa direto no Google Maps.
+
+* **[RF08] Sistema de Avaliações dos Alunos:**
+  - Alunos e usuários podem enviar avaliações com nota de 1 a 5 estrelas e comentários em texto.
+  - As avaliações devem ser associadas ao ID do local e salvar no banco de dados em tempo real.
+
+### 2.4 Administração e Gestão de Conteúdo
+* **[RF09] Painel Administrativo de Cadastro (CRUD):**
+  - Acesso protegido via senha administrativa em ([Admin.tsx](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/components/Admin.tsx)).
+  - Cadastro de novos pontos de interesse com marcação direto no mapa ou digitação manual de coordenadas.
+  - Upload e inclusão de imagens do local em formato Base64/URL.
+  - Edição e remoção de locais e categorias existentes.
+
+### 2.5 Persistência e Conectividade
+* **[RF10] Arquitetura de Dados Híbrida e Conectividade Remota:**
+  - Persistência padrão em servidor local Express + SQLite ([server/index.js](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/server/index.js)) gravando em `data/database.sqlite`.
+  - Fallback automático para `localStorage` em navegadores se a API local estiver inacessível.
+  - Suporte a conexão nativa com Supabase via variáveis de ambiente `.env`.
+  - Integração com Cloudflare Tunnel para expor o servidor local para redes externas e dispositivos móveis.
+
+---
+
+## 3. Requisitos Não-Funcionais (RNF)
+
+| Código | Requisito | Descrição |
+| :--- | :--- | :--- |
+| **[RNF01]** | **Desempenho** | O tempo de carregamento inicial da página deve ser inferior a 2 segundos em rede 4G/Wi-Fi. |
+| **[RNF02]** | **Responsividade** | A interface deve ser 100% responsiva (Mobile-First), adaptando-se perfeitamente a smartphones, tablets e desktops. |
+| **[RNF03]** | **Tolerância a Falhas** | Caso a API SQLite ou o Supabase fiquem offline, a aplicação deve mudar suavemente para o modo `localStorage` sem travar a interface do usuário. |
+| **[RNF04]** | **Capacidade de Carga de Payload** | O servidor Express deve aceitar requisições JSON de até **50MB** para comportar imagens em alta resolução convertidas em Base64. |
+| **[RNF05]** | **Compatibilidade de Proxy** | O servidor Vite deve ser configurado com suporte a proxy inverso (`/api` -> `http://127.0.0.1:3001`) para evitar erros de CORS e IPv6 (`ECONNREFUSED`). |
+
+---
+
+## 4. Regras de Negócio (RN)
+
+> [!IMPORTANT]
+> - **[RN01] Distinção de Coordenadas da UFC:** O marcador do pino da UFC no mapa deve indicar o centro do campus (`-4.9471, -37.9745`), porém **toda rota iniciada "Da UFC" deve obrigatoriamente partir da portaria oficial de saída** (`-4.945620, -37.975554`) para evitar rotas em contramão.
+> - **[RN02] Mão Única para Veículos:** Rotas veiculares (`driving`) não podem em hipótese alguma trafegar no sentido contrário das ruas de mão única de Russas - CE.
+> - **[RN03] Autenticação Administrativa:** Operações de deleção ou criação de locais no painel Admin exigem validação prévia de credencial definida no ambiente local.
+
+---
+
+## 5. Diagrama de Arquitetura do Sistema
+
+```mermaid
+graph TD
+    ClientMobile["📱 Cliente Mobile (Navegador/Celular)"] -->|Tunnel HTTP/HTTPS| Cloudflare["☁️ Cloudflare Tunnel (trycloudflare.com)"]
+    ClientDesktop["💻 Cliente Desktop (Navegador)"] -->|HTTP Local| ViteServer["🚀 Vite Dev Server (Porta 5173)"]
+    Cloudflare -->|Forward Port 5173| ViteServer
+    
+    ViteServer -->|/api Proxy| ExpressServer["⚡ Express Backend (Porta 3001)"]
+    
+    subgraph "Camada de Dados Local & Nuvem"
+        ExpressServer -->|Read/Write| SQLiteDB["💾 SQLite DB (data/database.sqlite)"]
+        ViteServer -.->|Fallback| LocalStorage["📦 Browser LocalStorage"]
+        ViteServer -.->|Se configurado| SupabaseCloud["⚡ Supabase Cloud DB"]
+    end
+
+    subgraph "Serviço Externo de Rotas"
+        ViteServer -->|Get GeoJSON Route| OSRM["🗺️ OSRM Engine (router.project-osrm.org)"]
+    end
+```
+
+---
+
+## 6. Mapeamento de Arquivos Principais
+
+- [src/App.tsx](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/App.tsx) — Componente principal, gerenciamento de estado das rotas, favoritos e barra flutuante.
+- [src/components/MapView.tsx](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/components/MapView.tsx) — Renderização do mapa Leaflet, marcadores e linha poligonal de rota.
+- [src/components/PlaceDetails.tsx](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/components/PlaceDetails.tsx) — Painel lateral de detalhes, avaliações dos alunos e cálculo de estimativas por origem.
+- [src/components/Admin.tsx](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/components/Admin.tsx) — Gestão de cadastros e edição de locais/categorias.
+- [src/lib/constants.ts](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/lib/constants.ts) — Configurações da UFC Russas e constantes globais.
+- [src/lib/mapUtils.ts](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/lib/mapUtils.ts) — Integração com a API OSRM para busca de geometrias de rotas.
+- [server/index.js](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/server/index.js) — Servidor backend Express + SQLite (`better-sqlite3`).
