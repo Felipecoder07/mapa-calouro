@@ -9,7 +9,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --reporter=verbose",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {

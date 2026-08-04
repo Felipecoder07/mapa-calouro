@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    reporters: ['verbose'],
   },
   resolve: {
     alias: {
