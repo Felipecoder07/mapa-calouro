@@ -69,11 +69,10 @@ const ICON_EMOJIS: Record<string, string> = {
   HelpCircle: '🖨️',
 };
 
+import { getCategoryEmoji } from '@/lib/icons';
+
 function getEmojiForCategory(category?: Category): string {
-  if (!category) return '📍';
-  if (CATEGORY_EMOJIS[category.slug]) return CATEGORY_EMOJIS[category.slug];
-  if (ICON_EMOJIS[category.icon]) return ICON_EMOJIS[category.icon];
-  return '📍';
+  return getCategoryEmoji(category);
 }
 
 function MapController({

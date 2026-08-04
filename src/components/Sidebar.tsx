@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Search, Star, MapPin, X, SlidersHorizontal } from 'lucide-react';
-import { getCategoryIcon } from '@/lib/icons';
+import { getCategoryIcon, getCategoryEmoji } from '@/lib/icons';
 import { formatDistance } from '@/lib/distance';
 import { isFavorite } from '@/lib/favorites';
 import type { PlaceWithMeta, Category } from '@/types';
@@ -145,7 +145,7 @@ export default function Sidebar({
                   style={isActive ? { backgroundColor: cat.color } : undefined}
                 >
                   <div className="flex items-center gap-1.5 min-w-0 truncate">
-                    <Icon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: isActive ? '#ffffff' : cat.color }} />
+                    <span className="text-xs">{getCategoryEmoji(cat)}</span>
                     <span className="truncate">{cat.name}</span>
                   </div>
                   <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${

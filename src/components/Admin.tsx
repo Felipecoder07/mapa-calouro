@@ -36,7 +36,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-lea
 import L from 'leaflet';
 import { ADMIN_PASSWORD_KEY, UNIVERSITY } from '@/lib/constants';
 import { fetchCategories, fetchPlaces, createPlace, updatePlace, deletePlace, createCategory, deleteCategory } from '@/lib/api';
-import { getCategoryIcon } from '@/lib/icons';
+import { getCategoryIcon, getCategoryEmoji } from '@/lib/icons';
 import { haversineDistance } from '@/lib/distance';
 import type { Place, Category } from '@/types';
 
@@ -214,6 +214,7 @@ export default function Admin({ onExit }: AdminProps) {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [newCatIcon, setNewCatIcon] = useState('Church');
+  const [newCatCustomEmoji, setNewCatCustomEmoji] = useState('');
   const [newCatColor, setNewCatColor] = useState('#a855f7');
   const [savingCat, setSavingCat] = useState(false);
 
@@ -571,7 +572,9 @@ export default function Admin({ onExit }: AdminProps) {
       );
     }
 
-    const detectedFromLocation = await detectCategoryFromCoords(foundLat, foundLng);
+    const finalLat = foundLat ?? UNIVERSITY.lat;
+    const finalLng = foundLng ?? UNIVERSITY.lng;
+    const detectedFromLocation = await detectCategoryFromCoords(finalLat, finalLng);
 
     const qLower = (nameToUse + ' ' + rawInput).toLowerCase();
     let catSlug = detectedFromLocation || 'salas-predios';
@@ -745,14 +748,17 @@ export default function Admin({ onExit }: AdminProps) {
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-');
 
+    const iconToSave = newCatCustomEmoji.trim() || newCatIcon;
+
     try {
       await createCategory({
         name: newCatName.trim(),
         slug,
-        icon: newCatIcon,
+        icon: iconToSave,
         color: newCatColor,
       });
       setNewCatName('');
+      setNewCatCustomEmoji('');
       setShowCategoryModal(false);
       await loadData();
     } catch {
@@ -958,20 +964,30 @@ export default function Admin({ onExit }: AdminProps) {
                 {filteredPlaces.map((place) => {
                   const cat = categories.find((c) => c.id === place.category_id);
                   const Icon = getCategoryIcon(cat?.icon ?? 'MapPin');
+                  const emoji = getCategoryEmoji(cat);
                   return (
                     <tr key={place.id} className="transition hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div
-                            className="flex h-8 w-8 items-center justify-center rounded-lg"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-base shadow-sm"
                             style={{ backgroundColor: `${cat?.color}15` }}
+                            title={cat?.name}
                           >
-                            <Icon className="h-4 w-4" style={{ color: cat?.color }} />
+                            {emoji}
                           </div>
                           <span className="text-sm font-medium text-gray-700">{place.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{cat?.name ?? '—'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        <span
+                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-xs"
+                          style={{ backgroundColor: `${cat?.color}15`, color: cat?.color }}
+                        >
+                          <span>{emoji}</span>
+                          <span>{cat?.name ?? '—'}</span>
+                        </span>
+                      </td>
                       <td className="hidden px-4 py-3 text-sm text-gray-500 md:table-cell">{place.address}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">
@@ -1034,20 +1050,55 @@ export default function Admin({ onExit }: AdminProps) {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-gray-700">Ícone / Emoji</label>
-                    <select
-                      value={newCatIcon}
-                      onChange={(e) => setNewCatIcon(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none"
-                    >
-                      {AVAILABLE_ICONS.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.emoji} {item.label}
-                        </option>
-                      ))}
-                    </select>
+                    <label className="mb-1 block text-xs font-semibold text-gray-700">Ícone ou Emoji da Categoria</label>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Cole ou digite um Emoji (ex: 🎯, 🚀, 🎭, 🍿)..."
+                          value={newCatCustomEmoji}
+                          onChange={(e) => setNewCatCustomEmoji(e.target.value)}
+                          className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-purple-400"
+                        />
+                        <select
+                          value={newCatIcon}
+                          onChange={(e) => {
+                            setNewCatIcon(e.target.value);
+                            setNewCatCustomEmoji('');
+                          }}
+                          className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none"
+                        >
+                          {AVAILABLE_ICONS.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.emoji} {item.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Quick Emoji Picker Buttons */}
+                      <div>
+                        <span className="mb-1 block text-[11px] font-medium text-gray-400">Ou escolha um emoji rápido:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {['🎯', '🚀', '🎭', '🎨', '🏛️', '🏥', '🍿', '🍔', '⚽', '🚌', '🎓', '💊', '🛒', '🏠', '🖨️', '⛪', '✨', '☕', '💪', '🍽️', '📚', '🏢'].map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => setNewCatCustomEmoji(emoji)}
+                              className={`flex h-7 w-7 items-center justify-center rounded-lg border text-sm transition ${
+                                newCatCustomEmoji === emoji
+                                  ? 'border-purple-500 bg-purple-100 ring-2 ring-purple-300'
+                                  : 'border-gray-200 bg-white hover:bg-purple-50'
+                              }`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -1091,15 +1142,15 @@ export default function Admin({ onExit }: AdminProps) {
               <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-400">Categorias Cadastradas ({categories.length})</h3>
               <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
                 {categories.map((cat) => {
-                  const Icon = getCategoryIcon(cat.icon);
+                  const emoji = getCategoryEmoji(cat);
                   return (
                     <div key={cat.id} className="flex items-center justify-between p-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ backgroundColor: `${cat.color}20` }}>
-                          <Icon className="h-4 w-4" style={{ color: cat.color }} />
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg text-sm shadow-xs" style={{ backgroundColor: `${cat.color}20` }}>
+                          {emoji}
                         </div>
                         <div>
-                          <span className="text-sm font-semibold text-gray-800">{cat.name}</span>
+                          <span className="text-sm font-semibold text-gray-800">{emoji} {cat.name}</span>
                           <span className="ml-2 text-xs text-gray-400">({cat.slug})</span>
                         </div>
                       </div>
@@ -1192,7 +1243,7 @@ export default function Admin({ onExit }: AdminProps) {
                   >
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
-                        {cat.name}
+                        {getCategoryEmoji(cat)} {cat.name}
                       </option>
                     ))}
                   </select>

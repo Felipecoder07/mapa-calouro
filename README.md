@@ -1,80 +1,98 @@
 # 🗺️ Mapa do Calouro - UFC Campus Russas
 
-Um guia geográfico e comunitário interativo desenvolvido para estudantes e visitantes do campus da **Universidade Federal do Ceará (UFC - Russas)**. O sistema permite localizar pontos de interesse (restaurantes, bibliotecas, salas, farmácias, moradias), calcular rotas inteligentes em tempo real e consultar/enviar avaliações comunitárias.
+Um guia geográfico, universitário e comunitário interativo desenvolvido para estudantes, professores, calouros e visitantes do campus da **Universidade Federal do Ceará (UFC - Campus Russas)**. O sistema permite navegar por um mapa interativo com visão vetorial e de satélite HD, encontrar locais por categoria, calcular rotas inteligentes em tempo real (pedestre e veículo), consultar/enviar avaliações da comunidade e gerenciar pontos através de um completo **Painel Administrativo com Assistente de Auto-Preenchimento e Emojis Personalizados**.
 
 ---
 
 ## 📌 Sumário
-- [Recursos Principais](#-recursos-principais)
-- [Como Funciona a Arquitetura](#-como-funciona-a-arquitetura)
-- [Requisitos do Sistema](#-requisitos-do-sistema)
-- [Passo a Passo de Instalação e Uso](#-passo-a-passo-de-instalação-e-uso)
-- [Expondo o Projeto para a Internet (Túnel Remoto)](#-expondo-o-projeto-para-a-internet-túnel-remoto)
-- [Estrutura de Pastas e Arquivos](#-estrutura-de-pastas-e-arquivos)
+- [✨ Recursos Principais](#-recursos-principais)
+- [⚡ Assistente de Auto-Preenchimento Rápido](#-assistente-de-auto-preenchimento-rápido)
+- [🏷️ Categorias & Emojis Personalizados](#️-categorias--emojis-personalizados)
+- [🏗️ Como Funciona a Arquitetura](#️-como-funciona-a-arquitetura)
+- [📋 Requisitos do Sistema](#-requisitos-do-sistema)
+- [🚀 Passo a Passo de Instalação e Uso](#-passo-a-passo-de-instalação-e-uso)
+- [🧪 Suíte de Testes Automatizados](#-suíte-de-testes-automatizados)
+- [🌐 Expondo o Projeto para a Internet (Cloudflare Tunnel)](#-expondo-o-projeto-para-a-internet-cloudflare-tunnel)
+- [📁 Estrutura de Pastas e Arquivos](#-estrutura-de-pastas-e-arquivos)
+- [📝 Licença](#-licença)
 
 ---
 
 ## ✨ Recursos Principais
 
-- 🗺️ **Mapa Interativo (Leaflet + OpenStreetMap):** Exibição de pinos customizados por categoria e marcador da UFC Russas no centro do campus.
-- 🚗 / 🚶 **Rotas Inteligentes com OSRM:**
-  - **Modo Pedestre (A pé):** Calcula a menor caminhada, atravessando atalhos e vias de pedestre.
-  - **Modo Automóvel (Carro/Moto):** Respeita o sentido obrigatório das ruas de mão única e regras de trânsito locais.
+- 🗺️ **Mapa Interativo Dual (Vetor & Satélite HD):**
+  - **Mapa Vetorial Padrão (OpenStreetMap):** Renderização leve de vias e quadras urbanas.
+  - **Visão por Satélite HD (Esri ArcGIS World Imagery):** Imagens de satélite em alta resolução para visualização detalhada do campus e arredores.
+- 🚗 / 🚶 **Rotas Inteligentes com OSRM API:**
+  - **Modo Pedestre (A pé):** Utiliza o perfil `foot` da OSRM para calcular rotas por travessias, passeios e atalhos de pedestres.
+  - **Modo Automóvel (Carro/Moto):** Utiliza o perfil `car` respeitando mão única e trânsito urbano.
 - 📍 **Origens de Rota Dinâmicas:**
-  - **Da UFC Russas:** Rota inicia na portaria oficial de saída do campus (`-4.945620, -37.975554`) para evitar saídas em contramão.
-  - **De você (GPS):** Rota inicia a partir da localização real do seu dispositivo.
-- 📊 **Comparador de Tempos & Distâncias:** Alternância fácil entre origens (`Da UFC` / `De você`) e modos (`A pé` / `Automóvel`) com atualização em tempo real.
-- ⭐ **Avaliações Comunitárias:** Alunos podem enviar notas de 1 a 5 estrelas e comentários para cada local.
-- ⚙️ **Painel Administrativo:** Interface protegida para cadastrar, editar ou remover locais e categorias com upload de imagens.
-- 💾 **Persistência Híbrida em SQLite:** Banco de dados relacional leve rodando em servidor local Node.js (`data/database.sqlite`), garantindo sincronização instantânea.
+  - **Da UFC Russas:** Rota inicia na **Portaria Oficial de Saída do Campus** (`-4.945620, -37.975554`) evitando saídas em contramão.
+  - **De você (GPS):** Rota inicia a partir da localização física real do seu dispositivo.
+- 📊 **Comparador de Tempos & Distâncias:** Cálculo em tempo real usando a fórmula de Haversine para distâncias em linha reta e OSRM para percurso urbano em vias.
+- ⭐ **Avaliações Comunitárias da Turma:** Sistema de notas de 1 a 5 estrelas e comentários para cada local, com cálculo instantâneo da média comunitária.
+- ❤️ **Favoritos Persistentes:** Salve seus locais mais frequentados no `localStorage` com filtro rápido na barra lateral.
+- ⚙️ **Painel Administrativo com Autenticação (Senha `admin123`):** Interface completa para cadastrar, editar e remover locais ou criar novas categorias customizadas.
+- 💾 **Banco de Dados SQLite Relacional:** Persistência em arquivo relacional leve (`data/database.sqlite`), sincronizando instantaneamente frontend e backend.
+
+---
+
+## ⚡ Assistente de Auto-Preenchimento Rápido
+
+Disponível tanto no **cadastro de novos locais** quanto na **edição de locais existentes**:
+
+- 🔗 **Suporte Multi-Link do Google Maps:** Aceita URLs normais, links curtos (`maps.app.goo.gl` / `goo.gl/maps`), coordenadas de viewport (`@lat,lng`), parâmetros de pinos (`!3d!4d`, `2d3d`), parâmetros de busca (`?q=`, `?ll=`, `loc:`) e coordenadas brutas (ex: `-4.9471, -37.9745`).
+- 🤖 **Extração Inteligente de Dados:** Lê o link ou texto e preenche automaticamente o **Nome do Local**, **Categoria ideal**, **Latitude**, **Longitude**, **Endereço Formatado** (via geocodificação reversa OpenStreetMap Nominatim) e **Fotos de Preview**!
+- 📍 **Preservação de Posição:** Se um link ou termo não contiver coordenadas válidas, o sistema preserva o pino no local atual e alerta o usuário para posicionar no mapa interativo com um clique.
+
+---
+
+## 🏷️ Categorias & Emojis Personalizados
+
+- 🎨 **Emojis 100% Consistentes:** Todos os ícones de categoria (Alimentação 🍽️, Bibliotecas 📚, Salas 🏢, Convivência ☕, Academias 💪, Esportes ⚽, Mercados 🛒, Saúde 💊, Moradias 🏠, Serviços 🖨️, Transporte 🚌, Igrejas ⛪, etc.) aparecem idênticos em todas as telas: no mapa, na sidebar, na lista administrativa e nos detalhes.
+- ➕ **Criador de Categorias com Emoji Customizado:** Ao criar uma nova categoria no Painel Admin, você pode:
+  1. Digitar ou colar **qualquer emoji personalizado** do seu teclado (ex: 🎯, 🚀, 🎭, 🍿, 🍔, 🎓).
+  2. Escolher um emoji em um **Grid Seletor Rápido de 22 Emojis**.
+  3. Escolher uma cor hexadecimal ou selecionar da paleta rápida.
 
 ---
 
 ## 🏗️ Como Funciona a Arquitetura
 
-O sistema é construído em uma arquitetura moderna dividida em:
+O sistema é construído em uma arquitetura desacoplada e moderna:
 
-1. **Frontend (React + Vite + Tailwind CSS):** Roda na porta `5173`. É responsável por toda a interface, mapa interativo e cálculos em tela.
-2. **Backend (Node.js + Express + SQLite):** Roda na porta `3001`. Gerencia a persistência no banco `data/database.sqlite` e expõe a API REST em `/api/...`.
-3. **API de Roteamento (OSRM API):** Serviços externos que traçam as polilinhas e calculam distâncias pelas vias urbanas de Russas.
+1. **Frontend (React 18 + TypeScript + Vite + Tailwind CSS):** Roda na porta `5173`. Responsável por toda a interface rica, mapas Leaflet e interações.
+2. **Backend (Node.js + Express + SQLite `better-sqlite3`):** Roda na porta `3001`. Gerencia a persistência no banco `data/database.sqlite` e expõe a API REST em `/api/...`.
+3. **API de Roteamento (OSRM):** Serviço público que calcula as rotas e retorna as polilinhas GeoJSON.
+4. **Geocodificação Reversa (OpenStreetMap Nominatim):** Converte coordenadas em endereços urbanos legíveis de Russas/CE.
 
 ---
 
 ## 📋 Requisitos do Sistema
 
-Antes de iniciar, certifique-se de ter instalado em seu computador:
-
 - **Node.js:** Versão 18.x ou superior.
-- **npm:** Versão 9.x ou superior (já vem com o Node.js).
+- **npm:** Versão 9.x ou superior.
 - **Git:** Para clonar o repositório.
-- **(Opcional) Cloudflared:** Para gerar links públicos temporários de teste.
+- **(Opcional) Cloudflared:** Para gerar links públicos temporários.
 
 ---
 
 ## 🚀 Passo a Passo de Instalação e Uso
 
 ### 1. Clonar o Repositório
-Abra o seu terminal e execute:
 ```bash
 git clone https://github.com/Felipecoder07/mapa-calouro.git
 cd mapa-calouro
 ```
 
 ### 2. Instalar as Dependências
-Execute o comando abaixo para instalar todos os pacotes do projeto:
 ```bash
 npm install
 ```
 
----
-
 ### 3. Executando o Projeto
 
-O projeto necessita do **Servidor Backend** (para carregar/salvar o banco SQLite) e do **Frontend Vite**.
-
-#### Opção A: Executar em Terminais Separados (Recomendado)
-
-**Terminal 1: Iniciar o Banco de Dados e Servidor Backend (Porta 3001)**
+**Terminal 1: Iniciar o Servidor Backend (Porta 3001)**
 ```bash
 npm run server
 ```
@@ -88,16 +106,43 @@ npm run dev
 
 ---
 
-## 🌐 Expondo o Projeto para a Internet (Túnel Remoto)
+## 🧪 Suíte de Testes Automatizados
 
-Se você deseja testar o site no seu celular ou compartilhar com colegas em outras redes enquanto roda no seu PC:
+O projeto possui **47 testes automatizados** divididos em módulos (Vitest para unidade/integração e Playwright para E2E):
 
-1. Baixe e instale o [Cloudflare Tunnel (cloudflared)](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/).
-2. Com o `npm run dev` e o `npm run server` rodando, abra um **terceiro terminal** e execute:
+```bash
+# Rodar todos os testes unitários e de integração (Vitest)
+npm test
+
+# Rodar verificação estática de tipos TypeScript
+npm run typecheck
+
+# Rodar testes E2E com Playwright
+npm run test:e2e
+```
+
+**Módulos Testados:**
+- `distance.test.ts`: Cálculo Haversine, formatação de distâncias e estimativa de tempo.
+- `mapUtils.test.ts`: Integração com OSRM, perfis `foot` e `car`, conversão GeoJSON.
+- `favorites.test.ts`: Persistência de favoritos no `localStorage`.
+- `server.test.ts`: Endpoints da API REST e banco SQLite.
+- `security.test.ts`: Prevenção de SQL Injection e Sanitização XSS.
+- `sidebarAndFilters.test.ts`: Busca por nome/endereço e filtros de categoria.
+- `reviewsAndRating.test.ts`: Média de estrelas, formatação de data e submissão.
+- `adminCrud.test.ts`: Extração de coordenadas Google Maps, auto-fill e validações.
+- `mobileAndResponsiveness.test.ts`: Alvos de toque acessíveis e breakpoints mobile.
+
+---
+
+## 🌐 Expondo o Projeto para a Internet (Cloudflare Tunnel)
+
+Para gerar um link público temporário e compartilhar o site com colegas em qualquer lugar (celular, tablet ou PC externo):
+
+1. Com o `npm run server` e `npm run dev` rodando, abra outro terminal e execute:
    ```bash
    cloudflared tunnel --url http://localhost:5173
    ```
-3. O Cloudflare gerará um link público seguro (ex: `https://xxxx.trycloudflare.com`). Qualquer pessoa poderá acessar seu site por esse link!
+2. O Cloudflare exibirá um link público seguro (ex: `https://xxxx.trycloudflare.com`). Qualquer pessoa pode acessar por esse link!
 
 ---
 
@@ -106,27 +151,31 @@ Se você deseja testar o site no seu celular ou compartilhar com colegas em outr
 ```text
 mapa-calouro/
 ├── data/
-│   └── database.sqlite      # Arquivo do banco de dados SQLite (gerado automaticamente)
+│   └── database.sqlite             # Banco de dados SQLite relacional
 ├── server/
-│   └── index.js             # Servidor Express com rotas REST e inicialização do SQLite
+│   └── index.js                    # Servidor Express, rotas REST e tabelas SQLite
 ├── src/
 │   ├── components/
-│   │   ├── Admin.tsx        # Painel administrativo de cadastro de locais
-│   │   ├── MapView.tsx      # Renderização do mapa Leaflet e rotas
-│   │   ├── PlaceDetails.tsx # Painel de detalhes, fotos e avaliações
-│   │   └── Sidebar.tsx      # Lista de locais, filtros e barra de busca
+│   │   ├── Admin.tsx               # Painel admin, formulários, auto-fill e seletor de emojis
+│   │   ├── MapView.tsx             # Mapa Leaflet, alternador de vetor/satélite e rotas
+│   │   ├── PlaceDetails.tsx        # Detalhes do local, carrossel de fotos e avaliações
+│   │   └── Sidebar.tsx             # Lista de locais, busca, favoritos e filtros
 │   ├── lib/
-│   │   ├── api.ts           # Integração de chamadas REST com o backend/SQLite
-│   │   ├── constants.ts     # Coordenadas oficiais da UFC Russas e portaria
-│   │   ├── distance.ts      # Utilitários de distância e cálculo de tempo
-│   │   └── mapUtils.ts      # Integração com a API OSRM para rotas
-│   ├── types/               # Tipagens TypeScript (Category, Place, Review)
-│   ├── App.tsx              # Componente raiz da aplicação
-│   └── main.tsx             # Ponto de entrada do React
+│   │   ├── api.ts                  # Integração REST com o backend
+│   │   ├── constants.ts            # Coordenadas oficiais da UFC Russas e portaria
+│   │   ├── distance.ts             # Fórmula de Haversine e utilitários de tempo
+│   │   ├── favorites.ts            # Gerenciamento de locais favoritados
+│   │   ├── icons.ts                # Mapeamento e resolvedor universal de emojis/ícones
+│   │   └── mapUtils.ts             # Integração OSRM e geradores de marcadores Leaflet
+│   ├── types/                      # Tipagens TypeScript (Category, Place, Review)
+│   ├── App.tsx                     # Componente principal e orquestrador de estado
+│   └── main.tsx                    # Ponto de entrada React
+├── tests/                          # 10 arquivos de testes unitários/integração
+├── e2e/                            # Testes end-to-end com Playwright
 ├── index.html
-├── package.json             # Scripts e dependências do projeto
-├── vite.config.ts           # Configuração do Vite e proxy para /api
-└── README.md
+├── package.json                    # Scripts e dependências
+├── vite.config.ts                  # Configuração do Vite e proxy /api
+└── README.md                       # Documentação oficial do projeto
 ```
 
 ---
