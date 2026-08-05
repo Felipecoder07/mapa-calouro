@@ -10,6 +10,7 @@ import {
   saveLocalPlace,
   updateLocalPlace,
   deleteLocalPlace,
+  clearAllLocalData,
 } from './mockData';
 
 // Priority 1: Supabase (if configured)
@@ -97,7 +98,10 @@ export async function fetchPlaces(): Promise<Place[]> {
         .from('places')
         .select('*, category:categories(*)')
         .order('name');
-      if (!error && data) return data;
+      if (!error && data) {
+        clearAllLocalData();
+        return data;
+      }
     } catch (e) {
       console.warn('FALHA SUPABASE: tentando SQLite API', e);
     }
@@ -107,7 +111,10 @@ export async function fetchPlaces(): Promise<Place[]> {
     const res = await fetch('/api/places');
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data)) return data;
+      if (Array.isArray(data)) {
+        clearAllLocalData();
+        return data;
+      }
     }
   } catch (e) {
     console.warn('FALHA SQLITE API: usando localStorage', e);

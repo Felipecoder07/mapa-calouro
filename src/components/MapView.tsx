@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -85,6 +85,8 @@ function MapController({
   route: RouteInfo | null;
 }) {
   const map = useMap();
+  const prevSelectedId = useRef<string | null>(null);
+  const prevUserLocation = useRef<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
     if (route && route.coordinates.length > 0) {
@@ -93,17 +95,49 @@ function MapController({
     }
   }, [route, map]);
 
+  // Fly to selected place ONLY when a new place is clicked (prevents resetting user zoom on re-render)
   useEffect(() => {
-    if (selectedPlace) {
-      map.flyTo([selectedPlace.lat, selectedPlace.lng], 16, { duration: 0.8 });
+    if (selectedPlace && selectedPlace.id !== prevSelectedId.current) {
+      prevSelectedId.current = selectedPlace.id;
+      const targetZoom = Math.max(map.getZoom(), 16);
+      map.flyTo([selectedPlace.lat, selectedPlace.lng], targetZoom, { duration: 0.8 });
+    } else if (!selectedPlace) {
+      prevSelectedId.current = null;
     }
   }, [selectedPlace, map]);
 
+  // Move to user location ONLY once when location is acquired
   useEffect(() => {
-    if (userLocation && !selectedPlace && !route) {
-      map.setView([userLocation.lat, userLocation.lng], 15);
+    if (userLocation && !selectedPlace && !route && userLocation !== prevUserLocation.current) {
+      prevUserLocation.current = userLocation;
+      map.setView([userLocation.lat, userLocation.lng], Math.max(map.getZoom(), 15));
     }
-  }, [userLocation, map]);
+  }, [userLocation, selectedPlace, route, map]);
+
+  return null;
+}
+
+// Dynamically updates map maxZoom on the Leaflet map instance when base layers change
+function DynamicZoomLimit() {
+  const map = useMap();
+
+  useEffect(() => {
+    const handleBaseLayerChange = (e: L.LayersControlEvent) => {
+      if (e.name.includes('Satélite')) {
+        map.setMaxZoom(18);
+        if (map.getZoom() > 18) {
+          map.setZoom(18);
+        }
+      } else {
+        map.setMaxZoom(22);
+      }
+    };
+
+    map.on('baselayerchange', handleBaseLayerChange);
+    return () => {
+      map.off('baselayerchange', handleBaseLayerChange);
+    };
+  }, [map]);
 
   return null;
 }
@@ -128,17 +162,25 @@ export default function MapView({
     <MapContainer
       center={[UNIVERSITY.lat, UNIVERSITY.lng]}
       zoom={16}
+      maxZoom={22}
+      minZoom={12}
+      bounceAtZoomLimits={false}
+      zoomSnap={0.5}
       className="h-full w-full"
       zoomControl={false}
+      attributionControl={false}
       ref={(map) => {
         if (map && onMapReady) onMapReady(map);
       }}
     >
+      <DynamicZoomLimit />
       <LayersControl position="bottomright">
         <LayersControl.BaseLayer checked name="🗺️ Mapa Padrão (Vetor)">
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            maxNativeZoom={19}
+            maxZoom={22}
           />
         </LayersControl.BaseLayer>
 
@@ -146,6 +188,8 @@ export default function MapView({
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            maxZoom={18}
+            maxNativeZoom={18}
           />
         </LayersControl.BaseLayer>
 
@@ -153,6 +197,8 @@ export default function MapView({
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            maxNativeZoom={19}
+            maxZoom={22}
           />
         </LayersControl.BaseLayer>
 
@@ -160,6 +206,8 @@ export default function MapView({
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            maxNativeZoom={19}
+            maxZoom={22}
           />
         </LayersControl.BaseLayer>
       </LayersControl>

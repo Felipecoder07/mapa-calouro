@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X,
   Star,
@@ -48,6 +48,138 @@ export default function PlaceDetails({
   const [submitting, setSubmitting] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<RouteProfile>('foot');
   const [selectedOrigin, setSelectedOrigin] = useState<'university' | 'user'>('university');
+
+  // Mobile Bottom Sheet Refs (Direct DOM Manipulation for 60fps smoothness)
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  const dragStartY = useRef(0);
+  const currentDeltaY = useRef(0);
+  const isExpandedRef = useRef(false);
+  const isDraggingRef = useRef(false);
+
+  // Animated close helper: slides down before triggering onClose()
+  const handleAnimatedClose = () => {
+    if (sheetRef.current && window.innerWidth < 768) {
+      sheetRef.current.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+      sheetRef.current.style.transform = 'translateY(100%)';
+      setTimeout(() => {
+        onClose();
+      }, 300);
+    } else {
+      onClose();
+    }
+  };
+
+  // Smooth entrance animation when a new place is selected
+  useEffect(() => {
+    if (!place) return;
+    if (sheetRef.current && window.innerWidth < 768) {
+      sheetRef.current.style.transition = 'none';
+      sheetRef.current.style.transform = 'translateY(100%)';
+      requestAnimationFrame(() => {
+        if (sheetRef.current) {
+          sheetRef.current.style.transition = 'transform 0.36s cubic-bezier(0.32, 0.72, 0, 1), height 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+          sheetRef.current.style.transform = 'translateY(0)';
+        }
+      });
+    }
+  }, [place]);
+
+  // Attach native touch event listeners to drag handle & header bar (runs outside React state updates)
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      dragStartY.current = e.touches[0].clientY;
+      currentDeltaY.current = 0;
+      isDraggingRef.current = true;
+      if (sheetRef.current) {
+        sheetRef.current.style.transition = 'none';
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDraggingRef.current || !sheetRef.current) return;
+      
+      // Block native browser pull-to-refresh / page reload gesture
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+
+      const currentY = e.touches[0].clientY;
+      const delta = currentY - dragStartY.current;
+      currentDeltaY.current = delta;
+
+      // Resistance when dragging up if already expanded
+      if (delta < 0) {
+        if (isExpandedRef.current) {
+          const dampened = delta * 0.2;
+          sheetRef.current.style.transform = `translateY(${dampened}px)`;
+        } else {
+          sheetRef.current.style.transform = `translateY(${delta}px)`;
+        }
+      } else {
+        sheetRef.current.style.transform = `translateY(${delta}px)`;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (!isDraggingRef.current || !sheetRef.current) return;
+      isDraggingRef.current = false;
+      const delta = currentDeltaY.current;
+
+      sheetRef.current.style.transition = 'transform 0.32s cubic-bezier(0.32, 0.72, 0, 1), height 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+
+      if (delta > 110) {
+        // Dragged down past threshold -> Close sheet
+        sheetRef.current.style.transform = 'translateY(100%)';
+        setTimeout(() => {
+          onClose();
+        }, 300);
+      } else if (delta < -50 && !isExpandedRef.current) {
+        // Dragged up -> Expand sheet
+        isExpandedRef.current = true;
+        sheetRef.current.style.height = '88dvh';
+        sheetRef.current.style.transform = 'translateY(0)';
+      } else if (delta > 50 && isExpandedRef.current) {
+        // Dragged down slightly while expanded -> Collapse to standard height
+        isExpandedRef.current = false;
+        sheetRef.current.style.height = '72dvh';
+        sheetRef.current.style.transform = 'translateY(0)';
+      } else {
+        // Snap back to current position
+        sheetRef.current.style.transform = 'translateY(0)';
+      }
+    };
+
+    const dragHandle = dragHandleRef.current;
+    const header = headerRef.current;
+
+    if (dragHandle) {
+      dragHandle.addEventListener('touchstart', handleTouchStart, { passive: true });
+      dragHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
+      dragHandle.addEventListener('touchend', handleTouchEnd, { passive: true });
+    }
+
+    if (header) {
+      header.addEventListener('touchstart', handleTouchStart, { passive: true });
+      header.addEventListener('touchmove', handleTouchMove, { passive: false });
+      header.addEventListener('touchend', handleTouchEnd, { passive: true });
+    }
+
+    return () => {
+      if (dragHandle) {
+        dragHandle.removeEventListener('touchstart', handleTouchStart);
+        dragHandle.removeEventListener('touchmove', handleTouchMove);
+        dragHandle.removeEventListener('touchend', handleTouchEnd);
+      }
+      if (header) {
+        header.removeEventListener('touchstart', handleTouchStart);
+        header.removeEventListener('touchmove', handleTouchMove);
+        header.removeEventListener('touchend', handleTouchEnd);
+      }
+    };
+  }, [onClose]);
 
   const activeDistance = useMemo(() => {
     if (!place) return null;
@@ -124,47 +256,64 @@ function getFallbackPhoto(slug?: string): string {
 }
 
   return (
-    <div className="pointer-events-auto absolute right-0 top-0 z-[1000] flex h-full w-full max-w-md flex-col bg-white shadow-2xl animate-slide-in-right">
-      {/* Header image */}
-      <div className="relative h-48 flex-shrink-0 overflow-hidden bg-gray-200">
-        {place.photos[0] ? (
-          <img
-            src={place.photos[0]}
-            alt={place.name}
-            className="h-full w-full object-cover"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = getFallbackPhoto(cat?.slug);
-            }}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center bg-gray-100">
-            <Icon className="h-12 w-12 text-gray-300" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <button
-          onClick={onClose}
-          className="absolute right-3 top-3 rounded-full bg-white/90 p-1.5 text-gray-700 shadow-md transition hover:bg-white"
-        >
-          <X className="h-5 w-5" />
-        </button>
-        <div className="absolute bottom-3 left-4 right-4">
-          <div className="flex items-center gap-2">
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
-              style={{ backgroundColor: cat?.color }}
-            >
-              <Icon className="h-3 w-3" />
-              {cat?.name}
-            </span>
-          </div>
-          <h2 className="mt-1.5 text-xl font-bold text-white drop-shadow">{place.name}</h2>
-        </div>
+    <div
+      ref={sheetRef}
+      className="pointer-events-auto z-[1000] flex flex-col bg-white shadow-2xl fixed inset-x-0 bottom-0 rounded-t-3xl h-[72dvh] md:fixed md:right-0 md:top-0 md:bottom-0 md:inset-x-auto md:h-full md:w-96 md:max-w-none md:rounded-none md:translate-y-0"
+      style={{ willChange: 'transform, height', overscrollBehaviorY: 'contain' }}
+    >
+      {/* Mobile Touch Drag Handle Bar */}
+      <div
+        ref={dragHandleRef}
+        className="flex w-full cursor-grab active:cursor-grabbing items-center justify-center py-2.5 md:hidden touch-none flex-shrink-0 bg-white rounded-t-3xl z-10"
+      >
+        <div className="h-1.5 w-12 rounded-full bg-gray-300" />
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5">
+      {/* Single Scrollable Area containing Header Image + Content */}
+      <div className="flex-1 overflow-y-auto" style={{ overscrollBehaviorY: 'contain' }}>
+        {/* Header image - now scrolls together with content */}
+        <div
+          ref={headerRef}
+          className="relative h-44 w-full flex-shrink-0 overflow-hidden bg-gray-200"
+        >
+          {place.photos[0] ? (
+            <img
+              src={place.photos[0]}
+              alt={place.name}
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = getFallbackPhoto(cat?.slug);
+              }}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-gray-100">
+              <Icon className="h-12 w-12 text-gray-300" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <button
+            onClick={handleAnimatedClose}
+            className="absolute right-3 top-3 rounded-full bg-white/90 p-1.5 text-gray-700 shadow-md transition hover:bg-white z-10"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div className="absolute bottom-3 left-4 right-4">
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+                style={{ backgroundColor: cat?.color }}
+              >
+                <Icon className="h-3 w-3" />
+                {cat?.name}
+              </span>
+            </div>
+            <h2 className="mt-1.5 text-xl font-bold text-white drop-shadow">{place.name}</h2>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-5">
         {/* Rating + Favorite */}
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -467,6 +616,7 @@ function getFallbackPhoto(slug?: string): string {
             </a>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

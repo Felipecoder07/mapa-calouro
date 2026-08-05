@@ -1,36 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Lock,
-  LogOut,
-  Plus,
-  Pencil,
-  Trash2,
-  X,
-  Search,
-  Loader2,
-  Save,
-  MapPin,
-  ArrowLeft,
-  LocateFixed,
-  Compass,
-  Utensils,
-  BookOpen,
-  Building2,
-  Coffee,
-  HelpCircle,
-  Sparkles,
-  Zap,
-  Dumbbell,
-  Tag,
-  Church,
-  Trophy,
-  ShoppingCart,
-  Pill,
-  Home,
-  Printer,
-  Bus,
-  Upload,
-  Image as ImageIcon,
+  Lock, LogOut, Plus, Pencil, Trash2, X, Search, Loader2,
+  Save, MapPin, ArrowLeft, LocateFixed, Zap, Upload, Image as ImageIcon,
+  Tag, Compass,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -108,21 +80,7 @@ const DEFAULT_CATEGORY_PHOTOS: Record<string, string[]> = {
   ],
 };
 
-const AVAILABLE_ICONS = [
-  { id: 'Church', label: 'Igrejas / Templos', emoji: '⛪' },
-  { id: 'Utensils', label: 'Alimentação / RU', emoji: '🍽️' },
-  { id: 'BookOpen', label: 'Bibliotecas / Estudos', emoji: '📚' },
-  { id: 'Building2', label: 'Salas / Blocos', emoji: '🏢' },
-  { id: 'Coffee', label: 'Convivência / Cantinas', emoji: '☕' },
-  { id: 'Dumbbell', label: 'Academias / Fitness', emoji: '💪' },
-  { id: 'Trophy', label: 'Esportes / Quadras', emoji: '⚽' },
-  { id: 'ShoppingCart', label: 'Mercados / Lojas', emoji: '🛒' },
-  { id: 'Pill', label: 'Saúde / Farmácias', emoji: '💊' },
-  { id: 'Home', label: 'Moradias / Repúblicas', emoji: '🏠' },
-  { id: 'Printer', label: 'Serviços / Xerox', emoji: '🖨️' },
-  { id: 'Bus', label: 'Transporte / Rodoviária', emoji: '🚌' },
-  { id: 'Sparkles', label: 'Destaques / Outros', emoji: '✨' },
-];
+
 
 const AVAILABLE_COLORS = [
   '#a855f7', // Roxo / Igrejas
@@ -172,6 +130,7 @@ function LocationPickerMap({
         zoom={16}
         className="h-48 w-full"
         zoomControl={false}
+        attributionControl={false}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <MapRecenter lat={lat} lng={lng} />
@@ -223,11 +182,27 @@ export default function Admin({ onExit }: AdminProps) {
   const [locatingGPS, setLocatingGPS] = useState(false);
   const [geoSearchQuery, setGeoSearchQuery] = useState('');
   const [autoFillInput, setAutoFillInput] = useState('');
+  const [showCatDropdown, setShowCatDropdown] = useState(false);
+  const [catDropdownRect, setCatDropdownRect] = useState<DOMRect | null>(null);
+  const catDropdownBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(ADMIN_PASSWORD_KEY);
     if (stored === 'true') setAuthed(true);
   }, []);
+
+  // Lock body scroll when any modal is open to prevent scroll chaining to background
+  useEffect(() => {
+    const isAnyModalOpen = showForm || showCategoryModal;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showForm, showCategoryModal]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -245,6 +220,54 @@ export default function Admin({ onExit }: AdminProps) {
   useEffect(() => {
     if (authed) loadData();
   }, [authed, loadData]);
+
+  const catDropdownPanelRef = useRef<HTMLDivElement>(null);
+
+  const updateCatDropdownPosition = useCallback(() => {
+    if (catDropdownBtnRef.current) {
+      setCatDropdownRect(catDropdownBtnRef.current.getBoundingClientRect());
+    }
+  }, []);
+
+  // Update fixed dropdown position on scroll/resize and handle click outside
+  useEffect(() => {
+    if (!showCatDropdown) return;
+
+    updateCatDropdownPosition();
+
+    const handleScrollOrResize = (e: Event) => {
+      if (e.type === 'scroll') {
+        // Close dropdown if scroll originated anywhere outside the dropdown panel itself
+        if (catDropdownPanelRef.current && !catDropdownPanelRef.current.contains(e.target as Node)) {
+          setShowCatDropdown(false);
+          return;
+        }
+      }
+      updateCatDropdownPosition();
+    };
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        catDropdownBtnRef.current &&
+        !catDropdownBtnRef.current.contains(e.target as Node) &&
+        catDropdownPanelRef.current &&
+        !catDropdownPanelRef.current.contains(e.target as Node)
+      ) {
+        setShowCatDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCatDropdown, updateCatDropdownPosition]);
 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
@@ -264,7 +287,7 @@ export default function Admin({ onExit }: AdminProps) {
 
   const fetchAddressFromCoords = async (lat: number, lng: number) => {
     const distToCampus = haversineDistance(UNIVERSITY.lat, UNIVERSITY.lng, lat, lng);
-    if (distToCampus <= 0.35) {
+    if (distToCampus <= 0.15) {
       return 'Campus da UFC em Russas, CE';
     }
 
@@ -330,7 +353,7 @@ export default function Admin({ onExit }: AdminProps) {
       }
 
       const distToCampus = haversineDistance(UNIVERSITY.lat, UNIVERSITY.lng, lat, lng);
-      if (distToCampus <= 0.35) {
+      if (distToCampus <= 0.15) {
         return 'salas-predios';
       }
     } catch {
@@ -399,18 +422,21 @@ export default function Admin({ onExit }: AdminProps) {
     }
 
     // 1. Priority 1: Exact Place Pin coordinates in Google Maps URL (!3d<lat>!4d<lng> or 3d<lat>!4d<lng>)
-    const pinMatch = decodedInput.match(/3d(-?\d+\.\d+)[!&]?4d(-?\d+\.\d+)/i);
-    if (pinMatch) {
-      lat = parseFloat(pinMatch[1]);
-      lng = parseFloat(pinMatch[2]);
+    // Note: Google Maps URLs often place the city/region coordinates first and the specific place pin coordinates LAST.
+    const pinMatches = [...decodedInput.matchAll(/3d(-?\d+\.\d+)[!&]?4d(-?\d+\.\d+)/gi)];
+    if (pinMatches.length > 0) {
+      const lastMatch = pinMatches[pinMatches.length - 1];
+      lat = parseFloat(lastMatch[1]);
+      lng = parseFloat(lastMatch[2]);
     }
 
     // 2. Priority 2: Reversed pin parameters (2d<lng>!3d<lat>)
     if (lat === undefined || lng === undefined) {
-      const revPinMatch = decodedInput.match(/2d(-?\d+\.\d+)[!&]?3d(-?\d+\.\d+)/i);
-      if (revPinMatch) {
-        lng = parseFloat(revPinMatch[1]);
-        lat = parseFloat(revPinMatch[2]);
+      const revPinMatches = [...decodedInput.matchAll(/2d(-?\d+\.\d+)[!&]?3d(-?\d+\.\d+)/gi)];
+      if (revPinMatches.length > 0) {
+        const lastRev = revPinMatches[revPinMatches.length - 1];
+        lng = parseFloat(lastRev[1]);
+        lat = parseFloat(lastRev[2]);
       }
     }
 
@@ -423,22 +449,14 @@ export default function Admin({ onExit }: AdminProps) {
       }
     }
 
-    // 4. Priority 4: Viewport camera center (@lat,lng) - used as fallback
-    if (lat === undefined || lng === undefined) {
-      const viewportMatch = decodedInput.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-      if (viewportMatch) {
-        lat = parseFloat(viewportMatch[1]);
-        lng = parseFloat(viewportMatch[2]);
-      }
-    }
-
-    // 5. Priority 5: Plain decimal coordinates in text (e.g. "-4.9471, -37.9745" or embedded in string)
+    // 4. Priority 4: Plain decimal coordinates in text (e.g. "-4.9471, -37.9745")
     if (lat === undefined || lng === undefined) {
       const coordMatches = [...decodedInput.matchAll(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/g)];
       for (const match of coordMatches) {
         const candidateLat = parseFloat(match[1]);
         const candidateLng = parseFloat(match[2]);
-        if (candidateLat >= -90 && candidateLat <= 90 && candidateLng >= -180 && candidateLng <= 180) {
+        // Only accept coordinates within the Russas / Ceará region bounds (-5.2 to -4.7 lat, -38.2 to -37.7 lng)
+        if (candidateLat >= -5.3 && candidateLat <= -4.6 && candidateLng >= -38.3 && candidateLng <= -37.6) {
           lat = candidateLat;
           lng = candidateLng;
           break;
@@ -446,17 +464,22 @@ export default function Admin({ onExit }: AdminProps) {
       }
     }
 
-    // 6. Extract place name from URL (/place/Name+Of+Place/)
+    // 5. Extract place name from URL (/place/Name+Of+Place/)
     const placeNameRegex = /\/place\/([^/@?]+)/;
     const placeMatch = decodedInput.match(placeNameRegex);
     if (placeMatch) {
-      const rawName = placeMatch[1].replace(/\+/g, ' ').trim();
+      let rawName = placeMatch[1].replace(/\+/g, ' ').trim();
+      try {
+        rawName = decodeURIComponent(rawName);
+      } catch {
+        // ignore
+      }
       if (rawName && !rawName.startsWith('http')) {
         name = rawName;
       }
     }
 
-    // 7. Extract Google Photo ID if present in link
+    // 6. Extract Google Photo ID if present in link
     const photoIdRegex = /(AF1Qip[A-Za-z0-9_-]{15,})/;
     const photoMatch = decodedInput.match(photoIdRegex);
     if (photoMatch) {
@@ -477,9 +500,25 @@ export default function Admin({ onExit }: AdminProps) {
 
     let htmlContent = '';
 
-    if (rawInput.includes('goo.gl') || rawInput.includes('maps.app') || rawInput.includes('maps.g') || rawInput.startsWith('http')) {
+    // First check if the raw input ALREADY contains exact coordinates and place name (instant 0.01s parse!)
+    let parsed = parseGoogleMapsInput(rawInput);
+
+    // Only query proxy servers if coordinates are missing AND it's a shortened URL (e.g. maps.app.goo.gl)
+    if ((parsed.lat === undefined || parsed.lng === undefined) &&
+        (rawInput.includes('goo.gl') || rawInput.includes('maps.app') || rawInput.includes('maps.g') || rawInput.startsWith('http'))) {
+      
+      const fetchWithTimeout = async (url: string, timeoutMs = 1500) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          return await fetch(url, { signal: controller.signal });
+        } finally {
+          clearTimeout(id);
+        }
+      };
+
       try {
-        const proxyRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rawInput)}`);
+        const proxyRes = await fetchWithTimeout(`https://api.allorigins.win/get?url=${encodeURIComponent(rawInput)}`, 1500);
         const proxyData = await proxyRes.json();
         if (proxyData) {
           if (proxyData.status?.url) {
@@ -490,22 +529,22 @@ export default function Admin({ onExit }: AdminProps) {
           }
         }
       } catch {
-        // ignore
+        // ignore timeout or network error
       }
 
       if (!htmlContent) {
         try {
-          const corsRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(autoFillInput.trim())}`);
+          const corsRes = await fetchWithTimeout(`https://corsproxy.io/?${encodeURIComponent(autoFillInput.trim())}`, 1500);
           const text = await corsRes.text();
           htmlContent += ' ' + text;
         } catch {
-          // ignore
+          // ignore timeout
         }
       }
-    }
 
-    const combinedText = `${rawInput} ${htmlContent}`;
-    const parsed = parseGoogleMapsInput(combinedText);
+      // Re-parse with htmlContent from proxy
+      parsed = parseGoogleMapsInput(`${rawInput} ${htmlContent}`);
+    }
 
     let nameToUse = parsed.name || (rawInput.startsWith('http') ? '' : rawInput);
     if (!nameToUse && rawInput.includes('/place/')) {
@@ -519,38 +558,49 @@ export default function Admin({ onExit }: AdminProps) {
       }
     }
 
+    if (nameToUse) {
+      try {
+        nameToUse = decodeURIComponent(nameToUse);
+      } catch {
+        // ignore
+      }
+    }
+
     let foundLat = parsed.lat;
     let foundLng = parsed.lng;
-    let foundAddress = '';
 
+    // Validate that found coordinates are within Russas region bounds
     if (foundLat !== undefined && foundLng !== undefined) {
-      foundAddress = await fetchAddressFromCoords(foundLat, foundLng);
-    } else {
+      if (foundLat < -5.3 || foundLat > -4.6 || foundLng < -38.3 || foundLng > -37.6) {
+        // Reject out-of-bounds coordinates
+        foundLat = undefined;
+        foundLng = undefined;
+      }
+    }
+
+    if (foundLat === undefined || foundLng === undefined) {
       const cleanQuery = (nameToUse || autoFillInput.trim()).replace(/https?:\/\/\S+/g, '').trim();
 
       if (cleanQuery) {
         try {
-          let response = await fetch(
+          // Search ONLY within Russas Ceara to prevent picking locations from other cities
+          const response = await fetch(
             `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
               `${cleanQuery} Russas Ceara`
             )}&format=json&limit=1`
           );
-          let data = await response.json();
-          if (!data || data.length === 0) {
-            response = await fetch(
-              `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-                `${cleanQuery} Ceara`
-              )}&format=json&limit=1`
-            );
-            data = await response.json();
-          }
+          const data = await response.json();
 
           if (data && data.length > 0) {
-            foundLat = parseFloat(data[0].lat);
-            foundLng = parseFloat(data[0].lon);
-            foundAddress = await fetchAddressFromCoords(foundLat, foundLng);
-            if (!nameToUse) {
-              nameToUse = data[0].display_name.split(',')[0];
+            const candidateLat = parseFloat(data[0].lat);
+            const candidateLng = parseFloat(data[0].lon);
+            // Verify search result is inside Russas region
+            if (candidateLat >= -5.3 && candidateLat <= -4.6 && candidateLng >= -38.3 && candidateLng <= -37.6) {
+              foundLat = candidateLat;
+              foundLng = candidateLng;
+              if (!nameToUse) {
+                nameToUse = data[0].display_name.split(',')[0];
+              }
             }
           }
         } catch {
@@ -574,37 +624,45 @@ export default function Admin({ onExit }: AdminProps) {
 
     const finalLat = foundLat ?? UNIVERSITY.lat;
     const finalLng = foundLng ?? UNIVERSITY.lng;
-    const detectedFromLocation = await detectCategoryFromCoords(finalLat, finalLng);
 
-    const qLower = (nameToUse + ' ' + rawInput).toLowerCase();
-    let catSlug = detectedFromLocation || 'salas-predios';
-    if (!detectedFromLocation) {
-      if (/igreja|templo|paróquia|paroquia|capela|catedral|evangélica|evangelica|católica|catolica/.test(qLower)) {
-        catSlug = 'igrejas-templos';
-      } else if (/ru|restaurante|comida|almoço|jantar|cantina|lanchonete|açaí|pizza|burger|bar|refeição/.test(qLower)) {
-        catSlug = 'alimentacao';
-      } else if (/biblioteca|livro|estudo|acervo/.test(qLower)) {
-        catSlug = 'bibliotecas';
-      } else if (/academia|fit|crossfit|treino|musculação/.test(qLower)) {
-        catSlug = 'academias';
-      } else if (/bloco|sala|predio|prédio|laboratorio|laboratório|auditório|secretaria/.test(qLower)) {
-        catSlug = 'salas-predios';
-      } else if (/dacc|da|ca|convivencia|convivência|descanso|café/.test(qLower)) {
-        catSlug = 'convivencia';
-      } else if (/quadra|campo|esporte|ginásio|piscina|ceu/.test(qLower)) {
-        catSlug = 'esportes';
-      } else if (/mercado|supermercado|conveniencia|loja/.test(qLower)) {
-        catSlug = 'mercados';
-      } else if (/farmacia|farmácia|remedio|hospital|posto|upa/.test(qLower)) {
-        catSlug = 'saude-farmacias';
-      } else if (/moradia|republica|república|pensaol|casa/.test(qLower)) {
-        catSlug = 'moradias';
-      } else if (/transporte|rodoviaria|rodoviária|onibus|ônibus|van/.test(qLower)) {
-        catSlug = 'transporte';
-      } else if (/xerox|copia|impressao|impressão|banco|correio|serviço/.test(qLower)) {
-        catSlug = 'servicos';
-      }
+    // Execute address lookup and category detection IN PARALLEL for maximum speed (cuts wait time in half!)
+    const [foundAddress, detectedFromLocation] = await Promise.all([
+      fetchAddressFromCoords(finalLat, finalLng),
+      detectCategoryFromCoords(finalLat, finalLng),
+    ]);
+
+    // Strip raw URLs out of search text so parameters like 'russas' or 'data' in URLs don't trigger false category matches
+    const textWithoutUrl = (nameToUse + ' ' + rawInput).replace(/https?:\/\/\S+/gi, '').trim();
+    const qLower = textWithoutUrl.toLowerCase();
+
+    let detectedFromName: string | null = null;
+    if (/igreja|templo|paróquia|paroquia|capela|catedral|evangélica|evangelica|católica|catolica|adventista|batista|presbiteriana|metodista|assembleia|assembléia|mesquita|sinagoga|espírita|espirita|terreiro|santuário|santuario|missa|culto/.test(qLower)) {
+      detectedFromName = 'igrejas-templos';
+    } else if (/\bru\b|restaurante|comida|almoço|almoco|jantar|cantina|lanchonete|açaí|acai|pizza|pizzaria|burger|hambúrguer|hamburguer|hamburgueria|bar|refeição|refeicao|espetinho|espeto|churrascaria|marmita|marmitaria|pastel|pastelaria|sorvete|sorveteria|gelato|doceria|confeitaria|padaria|panificadora|bistrô|bistro|sushi|temakeria|churros|tapioca|tapiocaria|foodtruck|petisco|boteco|choperia/.test(qLower)) {
+      detectedFromName = 'alimentacao';
+    } else if (/biblioteca|livro|livraria|estudo|acervo|leitura|videoteca|gibiteca|sebo/.test(qLower)) {
+      detectedFromName = 'bibliotecas';
+    } else if (/academia|fit|crossfit|treino|musculação|musculacao|pilates|fisioterapia|funcional|calistenia|aeróbica|aerobica|dança|danca|jiu jitsu|boxe|karate|karatê|muay thai/.test(qLower)) {
+      detectedFromName = 'academias';
+    } else if (/bloco|sala|predio|prédio|laboratorio|laboratório|auditório|auditorio|secretaria|diretoria|coordenação|coordenacao|gabinete|departamento|dce|centro acadêmico|centro academico|anfiteatro|complexo|núcleo|nucleo/.test(qLower)) {
+      detectedFromName = 'salas-predios';
+    } else if (/dacc|\bda\b|\bca\b|convivencia|convivência|descanso|café|cafe|praça|praca|espaço|espaco|área verde|area verde|vivência|vivencia|resenha|lounge|sinuca/.test(qLower)) {
+      detectedFromName = 'convivencia';
+    } else if (/quadra|campo|esporte|ginásio|ginasio|piscina|ceu|futebol|society|vôlei|volei|basquete|tênis|tenis|beach tennis|futsal|arena|estádio|estadio|atletismo/.test(qLower)) {
+      detectedFromName = 'esportes';
+    } else if (/mercado|supermercado|conveniencia|conveniência|loja|mercearia|atacado|atacadão|atacadao|hipermercado|hortifruti|frutaria|açougue|acougue|peixaria|utilidades|bazar|shopping|galeria/.test(qLower)) {
+      detectedFromName = 'mercados';
+    } else if (/farmacia|farmácia|remedio|remédio|hospital|posto|upa|clínica|clinica|médico|medico|drogaria|drogarias|dentista|odontologia|odonto|psicologia|enfermagem|pronto socorro|samu|vacina/.test(qLower)) {
+      detectedFromName = 'saude-farmacias';
+    } else if (/moradia|republica|república|pensão|pensaol|casa|kitnet|kit|pousada|quarto|apartamento|apto|flat|condomínio|condominio|aluguel|hospedagem|hotel/.test(qLower)) {
+      detectedFromName = 'moradias';
+    } else if (/transporte|rodoviaria|rodoviária|onibus|ônibus|van|parada|terminal|estação|estacao|metrô|metro|lotação|lotacao|táxi|taxi|uber|garagem/.test(qLower)) {
+      detectedFromName = 'transporte';
+    } else if (/xerox|copia|cópia|impressao|impressão|banco|correio|serviço|servico|gráfica|grafica|papelaria|chaveiro|barbearia|salão|salao|estética|estetica|lotérica|loterica|caixa eletrônico|caixa eletronico|lan house|assistência|assistencia|oficina|lava jato/.test(qLower)) {
+      detectedFromName = 'servicos';
     }
+
+    const catSlug = detectedFromName || detectedFromLocation || 'salas-predios';
 
     const matchedCat = categories.find((c) => c.slug === catSlug) || categories[0];
 
@@ -789,7 +847,7 @@ export default function Admin({ onExit }: AdminProps) {
     setSaving(true);
     const latNum = parseFloat(form.lat) || UNIVERSITY.lat;
     const lngNum = parseFloat(form.lng) || UNIVERSITY.lng;
-    
+
     let finalAddress = form.address.trim();
     if (!finalAddress) {
       finalAddress = await fetchAddressFromCoords(latNum, lngNum);
@@ -1023,147 +1081,243 @@ export default function Admin({ onExit }: AdminProps) {
 
       {/* Category Manager Modal */}
       {showCategoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl animate-fade-in">
-            <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(28,28,28,0.55)' }}>
+          <div
+            className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl p-0 animate-fade-in"
+            style={{
+              background: '#f7f4ed',
+              border: '1px solid #eceae4',
+              boxShadow: 'rgba(0,0,0,0.18) 0px 16px 48px',
+            }}
+          >
+            {/* Modal header */}
+            <div
+              className="flex items-center justify-between px-6 py-5"
+              style={{ borderBottom: '1px solid #eceae4' }}
+            >
               <div>
-                <h2 className="text-lg font-bold text-gray-800">🏷️ Gerenciar Categorias</h2>
-                <p className="text-xs text-gray-400">Adicione ou remova categorias do sistema</p>
+                <h2 className="text-xl font-semibold" style={{ color: '#1c1c1c', letterSpacing: '-0.4px' }}>
+                  Gerenciar Categorias
+                </h2>
+                <p className="mt-0.5 text-sm" style={{ color: '#5f5f5d' }}>
+                  Adicione ou remova categorias do sistema
+                </p>
               </div>
-              <button onClick={() => setShowCategoryModal(false)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100">
-                <X className="h-5 w-5" />
+              <button
+                onClick={() => setShowCategoryModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full transition"
+                style={{ background: 'rgba(28,28,28,0.06)', color: '#5f5f5d' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(28,28,28,0.12)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(28,28,28,0.06)')}
+                title="Fechar"
+              >
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Create new category form */}
-            <div className="mb-5 rounded-xl border border-purple-100 bg-purple-50/50 p-4">
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-purple-800">Criar Nova Categoria</h3>
-              <div className="space-y-3">
+            <div className="px-6 py-5 space-y-6">
+              {/* Create new category form */}
+              <div
+                className="rounded-xl p-5 space-y-4"
+                style={{ background: 'rgba(28,28,28,0.03)', border: '1px solid #eceae4' }}
+              >
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(28,28,28,0.4)' }}>
+                  Nova Categoria
+                </p>
+
+                {/* Name */}
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-gray-700">Nome da Categoria</label>
+                  <label className="mb-1.5 block text-sm font-medium" style={{ color: '#1c1c1c' }}>
+                    Nome da Categoria
+                  </label>
                   <input
                     type="text"
                     placeholder="Ex: Igrejas & Templos, Clubes..."
                     value={newCatName}
                     onChange={(e) => setNewCatName(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-purple-400"
+                    className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none transition"
+                    style={{
+                      background: '#f7f4ed',
+                      border: '1px solid #eceae4',
+                      color: '#1c1c1c',
+                    }}
+                    onFocus={e => (e.currentTarget.style.border = '1px solid rgba(28,28,28,0.4)')}
+                    onBlur={e => (e.currentTarget.style.border = '1px solid #eceae4')}
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-gray-700">Ícone ou Emoji da Categoria</label>
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Cole ou digite um Emoji (ex: 🎯, 🚀, 🎭, 🍿)..."
-                          value={newCatCustomEmoji}
-                          onChange={(e) => setNewCatCustomEmoji(e.target.value)}
-                          className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-purple-400"
-                        />
-                        <select
-                          value={newCatIcon}
-                          onChange={(e) => {
-                            setNewCatIcon(e.target.value);
-                            setNewCatCustomEmoji('');
-                          }}
-                          className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none"
-                        >
-                          {AVAILABLE_ICONS.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.emoji} {item.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                {/* Icon / Emoji */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium" style={{ color: '#1c1c1c' }}>
+                    Ícone ou Emoji da Categoria
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Digite o nome do ícone ou cole um emoji (ex: 🎯, 🚀, 🎭, ⛪)..."
+                    value={newCatCustomEmoji}
+                    onChange={(e) => {
+                      setNewCatCustomEmoji(e.target.value);
+                      setNewCatIcon(e.target.value);
+                    }}
+                    className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none transition"
+                    style={{
+                      background: '#f7f4ed',
+                      border: '1px solid #eceae4',
+                      color: '#1c1c1c',
+                    }}
+                    onFocus={e => (e.currentTarget.style.border = '1px solid rgba(28,28,28,0.4)')}
+                    onBlur={e => (e.currentTarget.style.border = '1px solid #eceae4')}
+                  />
 
-                      {/* Quick Emoji Picker Buttons */}
-                      <div>
-                        <span className="mb-1 block text-[11px] font-medium text-gray-400">Ou escolha um emoji rápido:</span>
-                        <div className="flex flex-wrap gap-1">
-                          {['🎯', '🚀', '🎭', '🎨', '🏛️', '🏥', '🍿', '🍔', '⚽', '🚌', '🎓', '💊', '🛒', '🏠', '🖨️', '⛪', '✨', '☕', '💪', '🍽️', '📚', '🏢'].map((emoji) => (
-                            <button
-                              key={emoji}
-                              type="button"
-                              onClick={() => setNewCatCustomEmoji(emoji)}
-                              className={`flex h-7 w-7 items-center justify-center rounded-lg border text-sm transition ${
-                                newCatCustomEmoji === emoji
-                                  ? 'border-purple-500 bg-purple-100 ring-2 ring-purple-300'
-                                  : 'border-gray-200 bg-white hover:bg-purple-50'
-                              }`}
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                  {/* Quick emoji picker */}
+                  <p className="mt-2.5 mb-1.5 text-xs" style={{ color: 'rgba(28,28,28,0.4)' }}>
+                    Ou selecione um emoji rápido:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['🎯', '🚀', '🎭', '🎨', '🏛️', '🏥', '🍿', '🍔', '⚽', '🚌', '🎓', '💊', '🛒', '🏠', '🖨️', '⛪', '✨', '☕', '💪', '🍽️', '📚', '🏢'].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => {
+                          setNewCatCustomEmoji(emoji);
+                          setNewCatIcon(emoji);
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-base transition"
+                        style={{
+                          background: newCatCustomEmoji === emoji ? '#1c1c1c' : '#f7f4ed',
+                          border: `1px solid ${newCatCustomEmoji === emoji ? '#1c1c1c' : '#eceae4'}`,
+                          boxShadow: newCatCustomEmoji === emoji ? 'rgba(255,255,255,0.2) 0px 0.5px 0px 0px inset, rgba(0,0,0,0.2) 0px 0px 0px 0.5px inset' : 'none',
+                        }}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
                   </div>
+                </div>
 
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-gray-700">Cor</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={newCatColor}
-                        onChange={(e) => setNewCatColor(e.target.value)}
-                        className="h-9 w-12 cursor-pointer rounded-lg border-0 bg-transparent"
-                      />
-                      <div className="flex flex-wrap gap-1">
-                        {AVAILABLE_COLORS.slice(0, 6).map((col) => (
-                          <button
-                            key={col}
-                            type="button"
-                            onClick={() => setNewCatColor(col)}
-                            className="h-5 w-5 rounded-full border border-white shadow-sm"
-                            style={{ backgroundColor: col }}
-                          />
-                        ))}
-                      </div>
+                {/* Color */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium" style={{ color: '#1c1c1c' }}>
+                    Cor
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={newCatColor}
+                      onChange={(e) => setNewCatColor(e.target.value)}
+                      className="h-9 w-12 cursor-pointer rounded-lg"
+                      style={{ border: '1px solid #eceae4', background: 'transparent' }}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {AVAILABLE_COLORS.map((col) => (
+                        <button
+                          key={col}
+                          type="button"
+                          onClick={() => setNewCatColor(col)}
+                          className="h-6 w-6 rounded-full transition"
+                          style={{
+                            backgroundColor: col,
+                            border: newCatColor === col ? `3px solid #1c1c1c` : '2px solid #eceae4',
+                            boxShadow: newCatColor === col ? '0 0 0 1px #f7f4ed' : 'none',
+                          }}
+                          title={col}
+                        />
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleSaveCategory}
-                  disabled={savingCat || !newCatName.trim()}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-purple-600 py-2.5 text-xs font-bold text-white transition hover:bg-purple-700 disabled:opacity-50 shadow-md"
-                >
-                  {savingCat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  Adicionar Categoria
-                </button>
+                {/* Preview + CTA */}
+                <div className="flex items-center gap-3">
+                  {/* Live preview pill */}
+                  {newCatName.trim() && (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+                      style={{ background: `${newCatColor}18`, color: newCatColor, border: `1px solid ${newCatColor}30` }}
+                    >
+                      <span>{newCatCustomEmoji || '🏷️'}</span>
+                      <span>{newCatName}</span>
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSaveCategory}
+                    disabled={savingCat || !newCatName.trim()}
+                    className="ml-auto flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition disabled:opacity-40"
+                    style={{
+                      background: '#1c1c1c',
+                      color: '#fcfbf8',
+                      boxShadow: 'rgba(255,255,255,0.2) 0px 0.5px 0px 0px inset, rgba(0,0,0,0.2) 0px 0px 0px 0.5px inset, rgba(0,0,0,0.05) 0px 1px 2px 0px',
+                    }}
+                  >
+                    {savingCat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    Adicionar
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* List existing categories */}
-            <div>
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-400">Categorias Cadastradas ({categories.length})</h3>
-              <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
-                {categories.map((cat) => {
-                  const emoji = getCategoryEmoji(cat);
-                  return (
-                    <div key={cat.id} className="flex items-center justify-between p-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg text-sm shadow-xs" style={{ backgroundColor: `${cat.color}20` }}>
-                          {emoji}
-                        </div>
-                        <div>
-                          <span className="text-sm font-semibold text-gray-800">{emoji} {cat.name}</span>
-                          <span className="ml-2 text-xs text-gray-400">({cat.slug})</span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteCategory(cat.id)}
-                        className="rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600"
-                        title="Excluir Categoria"
+              {/* Existing categories list */}
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(28,28,28,0.4)' }}>
+                  Cadastradas — {categories.length}
+                </p>
+                <div
+                  className="max-h-64 overflow-y-auto rounded-xl"
+                  style={{ border: '1px solid #eceae4' }}
+                >
+                  {categories.map((cat, idx) => {
+                    const emoji = getCategoryEmoji(cat);
+                    return (
+                      <div
+                        key={cat.id}
+                        className="flex items-center justify-between px-4 py-3 transition"
+                        style={{
+                          borderTop: idx > 0 ? '1px solid #eceae4' : 'none',
+                          background: '#f7f4ed',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(28,28,28,0.03)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = '#f7f4ed')}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-base"
+                            style={{ background: `${cat.color}18`, border: `1px solid ${cat.color}25` }}
+                          >
+                            {emoji}
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium" style={{ color: '#1c1c1c' }}>
+                              {cat.name}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg transition"
+                          style={{ color: 'rgba(28,28,28,0.4)', background: 'transparent', border: '1px solid transparent' }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(239,68,68,0.08)';
+                            e.currentTarget.style.color = '#ef4444';
+                            e.currentTarget.style.border = '1px solid rgba(239,68,68,0.2)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = 'rgba(28,28,28,0.4)';
+                            e.currentTarget.style.border = '1px solid transparent';
+                          }}
+                          title="Excluir categoria"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {categories.length === 0 && (
+                    <div className="py-8 text-center text-sm" style={{ color: 'rgba(28,28,28,0.4)' }}>
+                      Nenhuma categoria cadastrada.
                     </div>
-                  );
-                })}
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1172,8 +1326,17 @@ export default function Admin({ onExit }: AdminProps) {
 
       {/* Fast Form modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl animate-fade-in">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowForm(false);
+          }}
+          onWheel={(e) => e.stopPropagation()}
+        >
+          <div
+            className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl animate-fade-in"
+            onWheel={(e) => e.stopPropagation()}
+          >
             <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h2 className="text-lg font-bold text-gray-800">
@@ -1236,17 +1399,66 @@ export default function Admin({ onExit }: AdminProps) {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-gray-700">Categoria *</label>
-                  <select
-                    value={form.category_id}
-                    onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                    className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  {/* Custom dropdown trigger */}
+                  <button
+                    ref={catDropdownBtnRef}
+                    type="button"
+                    onClick={() => setShowCatDropdown((v) => !v)}
+                    className="flex w-full items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-left outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
                   >
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {getCategoryEmoji(cat)} {cat.name}
-                      </option>
-                    ))}
-                  </select>
+                    <span className="flex items-center gap-2 truncate">
+                      {form.category_id ? (() => {
+                        const cat = categories.find(c => c.id === form.category_id);
+                        return cat ? <><span>{getCategoryEmoji(cat)}</span><span className="truncate">{cat.name}</span></> : <span className="text-gray-400">Selecionar categoria...</span>;
+                      })() : <span className="text-gray-400">Selecionar categoria...</span>}
+                    </span>
+                    <svg className={`h-4 w-4 flex-shrink-0 text-gray-400 transition-transform ${showCatDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+
+                  {/* Custom dropdown panel — fixed position to escape overflow-hidden/Leaflet, with real-time scroll tracking */}
+                  {showCatDropdown && catDropdownRect && (
+                    <div
+                      ref={catDropdownPanelRef}
+                      className="overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-2xl"
+                      style={{
+                        position: 'fixed',
+                        top: catDropdownRect.bottom + 4,
+                        left: catDropdownRect.left,
+                        width: catDropdownRect.width,
+                        maxHeight: '220px',
+                        zIndex: 9999,
+                      }}
+                      onWheel={(e) => e.stopPropagation()}
+                    >
+                      {categories.map((cat) => {
+                        const isSelected = form.category_id === cat.id;
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              setForm({ ...form, category_id: cat.id });
+                              setShowCatDropdown(false);
+                            }}
+                            className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-left transition hover:bg-gray-50"
+                            style={{
+                              background: isSelected ? `${cat.color}12` : undefined,
+                              borderLeft: isSelected ? `3px solid ${cat.color}` : '3px solid transparent',
+                            }}
+                          >
+                            <span
+                              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-base"
+                              style={{ background: `${cat.color}18` }}
+                            >
+                              {getCategoryEmoji(cat)}
+                            </span>
+                            <span className="truncate font-medium text-gray-800">{cat.name}</span>
+                            {isSelected && <span className="ml-auto text-xs font-semibold" style={{ color: cat.color }}>✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 

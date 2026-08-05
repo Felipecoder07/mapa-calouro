@@ -109,8 +109,8 @@ const STORAGE_KEYS = {
 };
 
 export const clearAllLocalData = (): void => {
-  localStorage.setItem(STORAGE_KEYS.PLACES, JSON.stringify([]));
-  localStorage.setItem(STORAGE_KEYS.REVIEWS, JSON.stringify([]));
+  localStorage.removeItem(STORAGE_KEYS.PLACES);
+  localStorage.removeItem(STORAGE_KEYS.REVIEWS);
 };
 
 export const getLocalCategories = (): Category[] => {

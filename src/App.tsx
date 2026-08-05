@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { LocateFixed, Settings, Loader2, X, Route as RouteIcon, Footprints, Bike, Car } from 'lucide-react';
 import MapView from '@/components/MapView';
@@ -10,6 +10,187 @@ import { fetchCategories, fetchPlaces, fetchReviewsForPlaces } from '@/lib/api';
 import { haversineDistance, estimateDrivingTime, formatDistance, formatDuration } from '@/lib/distance';
 import { fetchRoute, type RouteInfo, type RouteProfile } from '@/lib/mapUtils';
 import type { PlaceWithMeta, Category } from '@/types';
+
+// Mobile touch-draggable Bottom Sheet for Explorar Locais
+function MobilePlacesSheet({
+  isOpen,
+  onClose,
+  totalPlaces,
+  children,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  totalPlaces: number;
+  children: React.ReactNode;
+}) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  const dragStartY = useRef(0);
+  const currentDeltaY = useRef(0);
+  const isExpandedRef = useRef(false);
+  const isDraggingRef = useRef(false);
+
+  // Smooth entrance animation
+  useEffect(() => {
+    if (!isOpen) return;
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = 'none';
+      sheetRef.current.style.transform = 'translateY(100%)';
+      requestAnimationFrame(() => {
+        if (sheetRef.current) {
+          sheetRef.current.style.transition = 'transform 0.36s cubic-bezier(0.32, 0.72, 0, 1), height 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+          sheetRef.current.style.transform = 'translateY(0)';
+        }
+      });
+    }
+  }, [isOpen]);
+
+  const handleAnimatedClose = () => {
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+      sheetRef.current.style.transform = 'translateY(100%)';
+      setTimeout(onClose, 300);
+    } else {
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      dragStartY.current = e.touches[0].clientY;
+      currentDeltaY.current = 0;
+      isDraggingRef.current = true;
+      if (sheetRef.current) {
+        sheetRef.current.style.transition = 'none';
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDraggingRef.current || !sheetRef.current) return;
+      if (e.cancelable) e.preventDefault();
+
+      const currentY = e.touches[0].clientY;
+      const delta = currentY - dragStartY.current;
+      currentDeltaY.current = delta;
+
+      if (delta < 0) {
+        if (isExpandedRef.current) {
+          const dampened = delta * 0.2;
+          sheetRef.current.style.transform = `translateY(${dampened}px)`;
+        } else {
+          sheetRef.current.style.transform = `translateY(${delta}px)`;
+        }
+      } else {
+        sheetRef.current.style.transform = `translateY(${delta}px)`;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (!isDraggingRef.current || !sheetRef.current) return;
+      isDraggingRef.current = false;
+      const delta = currentDeltaY.current;
+
+      sheetRef.current.style.transition = 'transform 0.32s cubic-bezier(0.32, 0.72, 0, 1), height 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+
+      if (delta > 110) {
+        sheetRef.current.style.transform = 'translateY(100%)';
+        setTimeout(onClose, 300);
+      } else if (delta < -50 && !isExpandedRef.current) {
+        isExpandedRef.current = true;
+        sheetRef.current.style.height = '90dvh';
+        sheetRef.current.style.transform = 'translateY(0)';
+      } else if (delta > 50 && isExpandedRef.current) {
+        isExpandedRef.current = false;
+        sheetRef.current.style.height = '75dvh';
+        sheetRef.current.style.transform = 'translateY(0)';
+      } else {
+        sheetRef.current.style.transform = 'translateY(0)';
+      }
+    };
+
+    const dragHandle = dragHandleRef.current;
+    const header = headerRef.current;
+
+    if (dragHandle) {
+      dragHandle.addEventListener('touchstart', handleTouchStart, { passive: true });
+      dragHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
+      dragHandle.addEventListener('touchend', handleTouchEnd, { passive: true });
+    }
+
+    if (header) {
+      header.addEventListener('touchstart', handleTouchStart, { passive: true });
+      header.addEventListener('touchmove', handleTouchMove, { passive: false });
+      header.addEventListener('touchend', handleTouchEnd, { passive: true });
+    }
+
+    return () => {
+      if (dragHandle) {
+        dragHandle.removeEventListener('touchstart', handleTouchStart);
+        dragHandle.removeEventListener('touchmove', handleTouchMove);
+        dragHandle.removeEventListener('touchend', handleTouchEnd);
+      }
+      if (header) {
+        header.removeEventListener('touchstart', handleTouchStart);
+        header.removeEventListener('touchmove', handleTouchMove);
+        header.removeEventListener('touchend', handleTouchEnd);
+      }
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[1100] md:hidden">
+      {/* Backdrop overlay */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+        onClick={handleAnimatedClose}
+      />
+
+      {/* Bottom Sheet container */}
+      <div
+        ref={sheetRef}
+        className="fixed inset-x-0 bottom-0 z-10 flex flex-col bg-white rounded-t-3xl h-[75dvh] shadow-2xl overflow-hidden"
+        style={{ willChange: 'transform, height', overscrollBehaviorY: 'contain' }}
+      >
+        {/* Touch Drag Handle Bar */}
+        <div
+          ref={dragHandleRef}
+          className="flex w-full cursor-grab active:cursor-grabbing items-center justify-center py-2.5 touch-none flex-shrink-0 bg-white rounded-t-3xl z-10 border-b border-gray-50"
+        >
+          <div className="h-1.5 w-12 rounded-full bg-gray-300" />
+        </div>
+
+        {/* Header Bar */}
+        <div
+          ref={headerRef}
+          className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5 bg-white flex-shrink-0 touch-none"
+        >
+          <div className="flex items-center gap-2">
+            <div className="h-2.5 w-2.5 rounded-full bg-blue-600 animate-pulse" />
+            <span className="text-base font-bold text-gray-800">Explorar Locais</span>
+            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-600">
+              {totalPlaces}
+            </span>
+          </div>
+          <button
+            onClick={handleAnimatedClose}
+            className="rounded-full bg-gray-100 p-2 text-gray-500 hover:bg-gray-200 active:scale-95 transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden">{children}</div>
+      </div>
+    </div>
+  );
+}
 
 function MapApp() {
   const navigate = useNavigate();
@@ -37,8 +218,8 @@ function MapApp() {
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
+  const loadAll = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     setError(null);
     try {
       const [cats, pls] = await Promise.all([fetchCategories(), fetchPlaces()]);
@@ -63,14 +244,20 @@ function MapApp() {
 
       setPlaces(enriched);
     } catch {
-      setError('Não foi possível carregar os dados. Verifique sua conexão.');
+      if (!isSilent) {
+        setError('Não foi possível carregar os dados. Verifique sua conexão.');
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadAll();
+    const interval = setInterval(() => {
+      loadAll(true); // Silent 10-second background refresh for new places/categories
+    }, 10000);
+    return () => clearInterval(interval);
   }, [loadAll, location.pathname]);
 
   const handleToggleCategory = (slug: string) => {
@@ -89,17 +276,31 @@ function MapApp() {
     }
     setLocating(true);
     setLocationError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setLocating(false);
-      },
-      () => {
-        setLocationError('Não foi possível obter sua localização.');
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+
+    const tryGetPosition = (highAccuracy: boolean) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setLocating(false);
+        },
+        (err) => {
+          if (highAccuracy) {
+            // Retry with standard accuracy (Wi-Fi/Cellular) if high accuracy times out
+            tryGetPosition(false);
+          } else {
+            if (err.code === err.PERMISSION_DENIED) {
+              alert('Permissão de GPS negada. Ative a localização nas configurações do seu navegador.');
+            } else {
+              alert('Não foi possível obter sua localização. Verifique se o GPS está ativado.');
+            }
+            setLocating(false);
+          }
+        },
+        { enableHighAccuracy: highAccuracy, timeout: 7000, maximumAge: 10000 }
+      );
+    };
+
+    tryGetPosition(true);
   };
 
   const handleRoute = async (
@@ -153,6 +354,7 @@ function MapApp() {
   };
 
   const handleSelectPlace = (place: PlaceWithMeta) => {
+    setMobileSidebarOpen(false);
     setSelectedPlace(place);
     handleClearRoute();
   };
@@ -217,41 +419,29 @@ function MapApp() {
         />
       </div>
 
-      {/* Mobile sidebar drawer */}
+      {/* Mobile touch-draggable Bottom Sheet modal for Explorar Locais */}
       {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-[1100] md:hidden">
-          <div
-            className="absolute inset-0 bg-black/30"
-            onClick={() => setMobileSidebarOpen(false)}
+        <MobilePlacesSheet
+          isOpen={mobileSidebarOpen}
+          onClose={() => setMobileSidebarOpen(false)}
+          totalPlaces={placesWithDistance.length}
+        >
+          <Sidebar
+            places={placesWithDistance}
+            categories={categories}
+            selectedCategories={selectedCategories}
+            onToggleCategory={handleToggleCategory}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            selectedPlace={selectedPlace}
+            onSelectPlace={(p) => {
+              handleSelectPlace(p);
+              setMobileSidebarOpen(false);
+            }}
+            showFavoritesOnly={showFavoritesOnly}
+            onToggleFavoritesFilter={() => setShowFavoritesOnly(!showFavoritesOnly)}
           />
-          <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw] shadow-2xl animate-slide-in-right"
-            style={{ animationName: 'slide-in-right', transform: 'translateX(-100%)', animation: 'slide-in-left 0.3s ease-out forwards' }}
-          >
-            <div className="flex items-center justify-between border-b border-gray-100 p-3">
-              <span className="text-sm font-semibold text-gray-700">Explorar locais</span>
-              <button onClick={() => setMobileSidebarOpen(false)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="h-[calc(100%-49px)]">
-              <Sidebar
-                places={placesWithDistance}
-                categories={categories}
-                selectedCategories={selectedCategories}
-                onToggleCategory={handleToggleCategory}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                selectedPlace={selectedPlace}
-                onSelectPlace={(p) => {
-                  handleSelectPlace(p);
-                  setMobileSidebarOpen(false);
-                }}
-                showFavoritesOnly={showFavoritesOnly}
-                onToggleFavoritesFilter={() => setShowFavoritesOnly(!showFavoritesOnly)}
-              />
-            </div>
-          </div>
-        </div>
+        </MobilePlacesSheet>
       )}
 
       {/* Map area */}
@@ -266,7 +456,7 @@ function MapApp() {
         {error && !loading && (
           <div className="absolute inset-0 z-[2000] flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
             <p className="text-sm text-gray-500">{error}</p>
-            <button onClick={loadAll} className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white">
+            <button onClick={() => loadAll()} className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white">
               Tentar novamente
             </button>
           </div>
@@ -285,42 +475,48 @@ function MapApp() {
             />
 
             {/* Top bar overlay */}
-            <div className="pointer-events-none absolute left-0 right-0 top-0 z-[500] flex items-center justify-between p-4">
-              <div className="pointer-events-auto flex items-center gap-2">
-                <button
-                  onClick={() => setMobileSidebarOpen(true)}
-                  className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-md transition hover:bg-gray-50 md:hidden"
-                >
-                  <span className="text-base">☰</span>
-                  Locais
-                </button>
-                <div className="rounded-xl bg-white px-4 py-2 shadow-md">
-                  <h1 className="text-sm font-bold text-gray-800">
-                    Mapa do Calouro
-                  </h1>
-                  <p className="text-xs text-gray-400">{UNIVERSITY.shortName} · Russas - CE</p>
+            <div className="pointer-events-none absolute left-3 right-3 top-3 z-[500] flex items-center justify-between">
+              {/* Brand Logo Pill */}
+              <div className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-white/95 px-3.5 py-2 shadow-lg backdrop-blur-md border border-gray-100">
+                <div className="h-2.5 w-2.5 rounded-full bg-blue-600 animate-pulse flex-shrink-0" />
+                <div>
+                  <h1 className="text-xs font-bold text-gray-900 leading-tight">Mapa do Calouro</h1>
+                  <p className="text-[10px] font-medium text-gray-400 leading-tight">{UNIVERSITY.shortName} · Russas</p>
                 </div>
               </div>
 
-              <div className="pointer-events-auto flex items-center gap-2">
+              {/* Quick Actions Group */}
+              <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl bg-white/95 p-1.5 shadow-lg backdrop-blur-md border border-gray-100">
+                <button
+                  onClick={() => {
+                    setSelectedPlace(null);
+                    setMobileSidebarOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 md:hidden"
+                >
+                  <span className="text-xs">🔍</span>
+                  <span>Locais</span>
+                </button>
+
                 <button
                   onClick={handleLocate}
-                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium shadow-md transition ${
+                  className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold shadow-xs transition ${
                     userLocation
                       ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   title="Usar minha localização"
                 >
-                  {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
+                  {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5" />}
                   <span className="hidden sm:inline">{userLocation ? 'Localizado' : 'Onde estou'}</span>
                 </button>
+
                 <button
                   onClick={() => navigate('/admin')}
-                  className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-md transition hover:bg-gray-50"
+                  className="flex items-center gap-1.5 rounded-xl bg-gray-100 px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-200 transition"
                   title="Painel administrativo"
                 >
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Admin</span>
                 </button>
               </div>
