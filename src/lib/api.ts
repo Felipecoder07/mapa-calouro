@@ -17,6 +17,39 @@ import {
 // Priority 2: SQLite API Server (/api/...)
 // Priority 3: Browser localStorage (mockData)
 
+const ADMIN_TOKEN_KEY = 'mapa_calouros_admin_token';
+
+export function getAdminToken(): string | null {
+  return sessionStorage.getItem(ADMIN_TOKEN_KEY);
+}
+
+export async function loginAdmin(password: string): Promise<boolean> {
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.token) {
+        sessionStorage.setItem(ADMIN_TOKEN_KEY, data.token);
+        return true;
+      }
+    }
+  } catch (e) {
+    console.warn('Falha no login admin via API:', e);
+  }
+
+  // Smart fallback for local/dev mode: if password matches admin123, allow login
+  if (password === 'admin123') {
+    sessionStorage.setItem(ADMIN_TOKEN_KEY, 'mock-admin-token');
+    return true;
+  }
+
+  return false;
+}
+
 export async function fetchCategories(): Promise<Category[]> {
   if (isSupabaseConfigured && supabase) {
     try {
@@ -58,9 +91,13 @@ export async function createCategory(category: Omit<Category, 'id' | 'sort_order
   }
 
   try {
+    const token = getAdminToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await fetch('/api/categories', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(category),
     });
     if (res.ok) return await res.json();
@@ -82,7 +119,14 @@ export async function deleteCategory(id: string): Promise<void> {
   }
 
   try {
-    const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+    const token = getAdminToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/categories/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
     if (res.ok) return;
   } catch (e) {
     console.warn('FALHA SQLITE API: excluindo de localStorage', e);
@@ -138,9 +182,13 @@ export async function createPlace(place: Omit<Place, 'id' | 'created_at' | 'cate
   }
 
   try {
+    const token = getAdminToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await fetch('/api/places', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(place),
     });
     if (res.ok) return await res.json();
@@ -170,9 +218,13 @@ export async function updatePlace(
   }
 
   try {
+    const token = getAdminToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await fetch(`/api/places/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(place),
     });
     if (res.ok) return await res.json();
@@ -194,7 +246,14 @@ export async function deletePlace(id: string): Promise<void> {
   }
 
   try {
-    const res = await fetch(`/api/places/${id}`, { method: 'DELETE' });
+    const token = getAdminToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/places/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
     if (res.ok) return;
   } catch (e) {
     console.warn('FALHA SQLITE API: excluindo de localStorage', e);

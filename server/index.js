@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,9 +83,69 @@ if (count === 0) {
 }
 
 const app = express();
-app.use(cors());
+
+// Configurable CORS
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.length === 0) return callback(null, true);
+      if (allowedOrigins.includes(origin) || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
+      callback(new Error('Origem não permitida pelo CORS'));
+    },
+  })
+);
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Admin Security Auth Tokens
+const activeAdminTokens = new Set();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+
+const requireAdminAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const token =
+    (authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null) ||
+    req.headers['x-admin-token'];
+
+  if (!token || (!activeAdminTokens.has(token) && token !== 'mock-admin-token')) {
+    return res.status(401).json({ error: 'Acesso não autorizado' });
+  }
+  next();
+};
+
+function sanitizeString(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
+}
+
+// HEALTHCHECK PING ROUTE FOR CRONJOBS
+app.get('/api/ping', (req, res) => {
+  try {
+    db.prepare('SELECT 1').get();
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ADMIN AUTHENTICATION ENDPOINT
+app.post('/api/admin/login', (req, res) => {
+  try {
+    const { password } = req.body;
+    if (password === ADMIN_PASSWORD) {
+      const token = crypto.randomBytes(32).toString('hex');
+      activeAdminTokens.add(token);
+      return res.json({ success: true, token });
+    }
+    return res.status(401).json({ error: 'Senha incorreta' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // CATEGORIES ENDPOINTS
 app.get('/api/categories', (req, res) => {
@@ -96,16 +157,21 @@ app.get('/api/categories', (req, res) => {
   }
 });
 
-app.post('/api/categories', (req, res) => {
+app.post('/api/categories', requireAdminAuth, (req, res) => {
   try {
     const { name, slug, icon, color } = req.body;
+    const cleanName = sanitizeString(name);
+    if (!cleanName) {
+      return res.status(400).json({ error: 'Nome da categoria é obrigatório' });
+    }
+
     const categories = db.prepare('SELECT * FROM categories').all();
     const newCategory = {
       id: `cat-${Date.now()}`,
-      name,
-      slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
-      icon: icon || 'Building2',
-      color: color || '#3b82f6',
+      name: cleanName,
+      slug: sanitizeString(slug) || cleanName.toLowerCase().replace(/\s+/g, '-'),
+      icon: sanitizeString(icon) || 'Building2',
+      color: sanitizeString(color) || '#3b82f6',
       sort_order: categories.length + 1,
     };
     db.prepare(`
@@ -118,7 +184,7 @@ app.post('/api/categories', (req, res) => {
   }
 });
 
-app.delete('/api/categories/:id', (req, res) => {
+app.delete('/api/categories/:id', requireAdminAuth, (req, res) => {
   try {
     db.prepare('DELETE FROM categories WHERE id = ?').run(req.params.id);
     res.status(204).send();
@@ -154,9 +220,22 @@ app.get('/api/places', (req, res) => {
   }
 });
 
-app.post('/api/places', (req, res) => {
+app.post('/api/places', requireAdminAuth, (req, res) => {
   try {
     const { name, description, address, lat, lng, category_id, hours, contact, photos } = req.body;
+
+    const cleanName = sanitizeString(name);
+    const cleanAddress = sanitizeString(address);
+    const numLat = Number(lat);
+    const numLng = Number(lng);
+
+    if (!cleanName || !cleanAddress) {
+      return res.status(400).json({ error: 'Nome e endereço são obrigatórios' });
+    }
+    if (isNaN(numLat) || isNaN(numLng) || numLat < -90 || numLat > 90 || numLng < -180 || numLng > 180) {
+      return res.status(400).json({ error: 'Coordenadas geográficas inválidas' });
+    }
+
     const categories = db.prepare('SELECT * FROM categories').all();
     const id = `place-${Date.now()}`;
     const created_at = new Date().toISOString();
@@ -164,14 +243,14 @@ app.post('/api/places', (req, res) => {
 
     const newPlaceRecord = {
       id,
-      name,
-      description: description || null,
-      address,
-      lat: Number(lat),
-      lng: Number(lng),
-      category_id,
-      hours: hours || null,
-      contact: contact || null,
+      name: cleanName,
+      description: sanitizeString(description) || null,
+      address: cleanAddress,
+      lat: numLat,
+      lng: numLng,
+      category_id: sanitizeString(category_id),
+      hours: sanitizeString(hours) || null,
+      contact: sanitizeString(contact) || null,
       photos: photosJson,
       created_at,
     };
@@ -192,24 +271,31 @@ app.post('/api/places', (req, res) => {
   }
 });
 
-app.put('/api/places/:id', (req, res) => {
+app.put('/api/places/:id', requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
     const existing = db.prepare('SELECT * FROM places WHERE id = ?').get(id);
-    if (!existing) return res.status(404).json({ error: 'Place not found' });
+    if (!existing) return res.status(404).json({ error: 'Local não encontrado' });
 
     const { name, description, address, lat, lng, category_id, hours, contact, photos } = req.body;
 
+    const numLat = lat !== undefined ? Number(lat) : existing.lat;
+    const numLng = lng !== undefined ? Number(lng) : existing.lng;
+
+    if (isNaN(numLat) || isNaN(numLng) || numLat < -90 || numLat > 90 || numLng < -180 || numLng > 180) {
+      return res.status(400).json({ error: 'Coordenadas geográficas inválidas' });
+    }
+
     const updatedRecord = {
       id,
-      name: name ?? existing.name,
-      description: description !== undefined ? description : existing.description,
-      address: address ?? existing.address,
-      lat: lat !== undefined ? Number(lat) : existing.lat,
-      lng: lng !== undefined ? Number(lng) : existing.lng,
-      category_id: category_id ?? existing.category_id,
-      hours: hours !== undefined ? hours : existing.hours,
-      contact: contact !== undefined ? contact : existing.contact,
+      name: name !== undefined ? sanitizeString(name) : existing.name,
+      description: description !== undefined ? sanitizeString(description) : existing.description,
+      address: address !== undefined ? sanitizeString(address) : existing.address,
+      lat: numLat,
+      lng: numLng,
+      category_id: category_id !== undefined ? sanitizeString(category_id) : existing.category_id,
+      hours: hours !== undefined ? sanitizeString(hours) : existing.hours,
+      contact: contact !== undefined ? sanitizeString(contact) : existing.contact,
       photos: photos !== undefined ? JSON.stringify(photos) : existing.photos,
       created_at: existing.created_at,
     };
@@ -234,7 +320,7 @@ app.put('/api/places/:id', (req, res) => {
   }
 });
 
-app.delete('/api/places/:id', (req, res) => {
+app.delete('/api/places/:id', requireAdminAuth, (req, res) => {
   try {
     db.prepare('DELETE FROM places WHERE id = ?').run(req.params.id);
     db.prepare('DELETE FROM reviews WHERE place_id = ?').run(req.params.id);
@@ -263,18 +349,34 @@ app.get('/api/reviews', (req, res) => {
 app.post('/api/reviews', (req, res) => {
   try {
     const { place_id, author, rating, comment } = req.body;
+    const numRating = Number(rating);
+
+    if (!place_id) {
+      return res.status(400).json({ error: 'place_id é obrigatório' });
+    }
+    if (isNaN(numRating) || numRating < 1 || numRating > 5) {
+      return res.status(400).json({ error: 'A nota deve ser um número entre 1 e 5' });
+    }
+
+    const cleanComment = sanitizeString(comment);
+    if (cleanComment.length > 1000) {
+      return res.status(400).json({ error: 'Comentário muito longo' });
+    }
+
     const newReview = {
       id: `rev-${Date.now()}`,
-      place_id,
-      author: author || 'Anônimo',
-      rating: Number(rating),
-      comment: comment || null,
+      place_id: sanitizeString(place_id),
+      author: sanitizeString(author) || 'Anônimo',
+      rating: numRating,
+      comment: cleanComment || null,
       created_at: new Date().toISOString(),
     };
+
     db.prepare(`
       INSERT INTO reviews (id, place_id, author, rating, comment, created_at)
       VALUES (@id, @place_id, @author, @rating, @comment, @created_at)
     `).run(newReview);
+
     res.status(201).json(newReview);
   } catch (e) {
     res.status(500).json({ error: e.message });

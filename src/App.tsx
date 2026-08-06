@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { LocateFixed, Settings, Loader2, X, Route as RouteIcon, Footprints, Bike, Car } from 'lucide-react';
+import { LocateFixed, Settings, Loader2, X, Route as RouteIcon, Footprints, Bike, Car, Clock } from 'lucide-react';
 import MapView from '@/components/MapView';
 import Sidebar from '@/components/Sidebar';
 import PlaceDetails from '@/components/PlaceDetails';
 import Admin from '@/components/Admin';
 import { UNIVERSITY } from '@/lib/constants';
 import { fetchCategories, fetchPlaces, fetchReviewsForPlaces } from '@/lib/api';
-import { haversineDistance, estimateDrivingTime, formatDistance, formatDuration } from '@/lib/distance';
+import { haversineDistance, estimateDrivingTime, estimateWalkingTime, formatDistance, formatDuration } from '@/lib/distance';
 import { fetchRoute, type RouteInfo, type RouteProfile } from '@/lib/mapUtils';
 import type { PlaceWithMeta, Category } from '@/types';
 
@@ -207,6 +207,7 @@ function MapApp() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [distanceOrigin, setDistanceOrigin] = useState<'university' | 'user'>('university');
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
 
@@ -356,15 +357,20 @@ function MapApp() {
   const handleSelectPlace = (place: PlaceWithMeta) => {
     setMobileSidebarOpen(false);
     setSelectedPlace(place);
-    handleClearRoute();
+  };
+
+  const toggleDistanceOrigin = () => {
+    setDistanceOrigin((prev) => (prev === 'user' ? 'university' : 'user'));
   };
 
   const placesWithDistance = useMemo(() => {
-    const refLat = userLocation ? userLocation.lat : UNIVERSITY.lat;
-    const refLng = userLocation ? userLocation.lng : UNIVERSITY.lng;
+    const isUserRef = distanceOrigin === 'user' && userLocation !== null;
+    const refLat = isUserRef ? userLocation.lat : UNIVERSITY.lat;
+    const refLng = isUserRef ? userLocation.lng : UNIVERSITY.lng;
 
     return places.map((p) => {
-      const distance = haversineDistance(refLat, refLng, p.lat, p.lng);
+      // Apply 1.25x street factor to account for real street curves vs straight line
+      const distance = haversineDistance(refLat, refLng, p.lat, p.lng) * 1.25;
       const duration = estimateDrivingTime(distance);
       return {
         ...p,
@@ -372,7 +378,7 @@ function MapApp() {
         duration,
       };
     });
-  }, [places, userLocation]);
+  }, [places, userLocation, distanceOrigin]);
 
   const filteredPlaces = useMemo(() => {
     let result = placesWithDistance;
@@ -402,11 +408,11 @@ function MapApp() {
   }
 
   return (
-    <div className="relative flex h-screen w-screen overflow-hidden bg-gray-50">
+    <div className="fixed inset-0 flex h-[100dvh] w-screen overflow-hidden bg-gray-50 select-none">
       {/* Sidebar - desktop */}
       <div className="hidden w-80 flex-shrink-0 border-r border-gray-100 md:block">
         <Sidebar
-          places={placesWithDistance}
+          places={filteredPlaces}
           categories={categories}
           selectedCategories={selectedCategories}
           onToggleCategory={handleToggleCategory}
@@ -416,6 +422,9 @@ function MapApp() {
           onSelectPlace={handleSelectPlace}
           showFavoritesOnly={showFavoritesOnly}
           onToggleFavoritesFilter={() => setShowFavoritesOnly(!showFavoritesOnly)}
+          userLocationActive={userLocation !== null}
+          distanceOrigin={distanceOrigin}
+          onToggleDistanceOrigin={toggleDistanceOrigin}
         />
       </div>
 
@@ -424,10 +433,10 @@ function MapApp() {
         <MobilePlacesSheet
           isOpen={mobileSidebarOpen}
           onClose={() => setMobileSidebarOpen(false)}
-          totalPlaces={placesWithDistance.length}
+          totalPlaces={filteredPlaces.length}
         >
           <Sidebar
-            places={placesWithDistance}
+            places={filteredPlaces}
             categories={categories}
             selectedCategories={selectedCategories}
             onToggleCategory={handleToggleCategory}
@@ -440,6 +449,9 @@ function MapApp() {
             }}
             showFavoritesOnly={showFavoritesOnly}
             onToggleFavoritesFilter={() => setShowFavoritesOnly(!showFavoritesOnly)}
+            userLocationActive={userLocation !== null}
+            distanceOrigin={distanceOrigin}
+            onToggleDistanceOrigin={toggleDistanceOrigin}
           />
         </MobilePlacesSheet>
       )}
@@ -476,8 +488,8 @@ function MapApp() {
 
             {/* Top bar overlay */}
             <div className="pointer-events-none absolute left-3 right-3 top-3 z-[500] flex items-center justify-between">
-              {/* Brand Logo Pill */}
-              <div className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-white/95 px-3.5 py-2 shadow-lg backdrop-blur-md border border-gray-100">
+              {/* Left — Brand Logo Pill */}
+              <div className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-white/95 px-3.5 py-2 shadow-lg backdrop-blur-md border border-gray-100 flex-shrink-0">
                 <div className="h-2.5 w-2.5 rounded-full bg-blue-600 animate-pulse flex-shrink-0" />
                 <div>
                   <h1 className="text-xs font-bold text-gray-900 leading-tight">Mapa do Calouro</h1>
@@ -485,31 +497,58 @@ function MapApp() {
                 </div>
               </div>
 
-              {/* Quick Actions Group */}
-              <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl bg-white/95 p-1.5 shadow-lg backdrop-blur-md border border-gray-100">
+              {/* Right — Quick Actions Pill */}
+              <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl bg-white/95 p-1.5 shadow-lg backdrop-blur-md border border-gray-100 flex-shrink-0">
+                {/* Mobile-only: Locais button */}
                 <button
                   onClick={() => {
                     setSelectedPlace(null);
                     setMobileSidebarOpen(true);
                   }}
-                  className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 md:hidden"
+                  className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 sm:hidden"
                 >
                   <span className="text-xs">🔍</span>
                   <span>Locais</span>
                 </button>
 
-                <button
-                  onClick={handleLocate}
-                  className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold shadow-xs transition ${
-                    userLocation
-                      ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  title="Usar minha localização"
-                >
-                  {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5" />}
-                  <span className="hidden sm:inline">{userLocation ? 'Localizado' : 'Onde estou'}</span>
-                </button>
+                {/* GPS origin toggle */}
+                {userLocation ? (
+                  <div className="flex items-center gap-0.5 rounded-xl bg-gray-100/90 p-0.5 shadow-xs">
+                    <button
+                      onClick={() => setDistanceOrigin('user')}
+                      className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
+                        distanceOrigin === 'user'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                      title="Distâncias calculadas da sua posição física"
+                    >
+                      <span className="sm:hidden">📍</span>
+                      <span className="hidden sm:inline">📍 De você</span>
+                    </button>
+                    <button
+                      onClick={() => setDistanceOrigin('university')}
+                      className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
+                        distanceOrigin === 'university'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                      title="Distâncias calculadas a partir da UFC Russas"
+                    >
+                      <span className="sm:hidden">🏛️</span>
+                      <span className="hidden sm:inline">🏛️ Da UFC</span>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleLocate}
+                    className="flex items-center gap-1.5 rounded-xl bg-gray-100 px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-200 transition"
+                    title="Usar minha localização GPS"
+                  >
+                    {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">Onde estou</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => navigate('/admin')}
@@ -532,56 +571,88 @@ function MapApp() {
               </div>
             )}
 
-            {/* Dynamic Route Info Banner */}
-            {route && routeOrigin && (selectedPlace || routeTargetPlace) && (
-              <div className="absolute left-1/2 top-20 z-[600] -translate-x-1/2 flex flex-col sm:flex-row items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-xl border border-gray-100 animate-fade-in">
-                <div className="flex items-center gap-2">
-                  <RouteIcon className="h-5 w-5 text-blue-600" />
-                  <div className="text-xs sm:text-sm">
-                    <span className="font-semibold text-gray-800">
-                      {routeOrigin === 'university' ? 'Da UFC Russas' : 'De você'}
+            {/* Floating Route Banner — Positioned at top-16 on mobile and top-3 on desktop */}
+            {route && routeOrigin && (
+              <div className="absolute left-1/2 top-16 sm:top-3 z-[600] -translate-x-1/2 sm:-ml-12 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 rounded-2xl bg-white/95 p-3 sm:px-4 sm:py-2 shadow-xl backdrop-blur-md border border-gray-100/80 animate-fade-in-center w-[94%] max-w-sm sm:w-auto sm:max-w-max">
+                {/* Origin → Destination */}
+                <div className="relative sm:static flex items-center justify-center sm:justify-start w-full sm:w-auto px-5 sm:px-0">
+                  <div className="flex items-center justify-center sm:justify-start gap-1.5 min-w-0 max-w-full overflow-hidden text-center sm:text-left">
+                    <span className="flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700 whitespace-nowrap flex-shrink-0">
+                      {routeOrigin === 'university' ? '🏛️ UFC' : '📍 Você'}
                     </span>
-                    <span className="mx-1 text-gray-300">→</span>
-                    <span className="font-semibold text-gray-800">
-                      {(selectedPlace || routeTargetPlace)?.name}
+                    <span className="text-gray-400 font-bold text-xs flex-shrink-0">→</span>
+                    <span className="truncate rounded-lg bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700 max-w-[160px] sm:max-w-[200px]">
+                      📍 {(routeTargetPlace || selectedPlace)?.name || 'Destino'}
                     </span>
                   </div>
+
+                  {/* Mobile Close Button */}
+                  <button
+                    onClick={handleClearRoute}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition sm:hidden"
+                    title="Fechar rota"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-2 border-t sm:border-t-0 sm:border-l border-gray-100 pt-2 sm:pt-0 sm:pl-3">
+                {/* Controls Row */}
+                <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto pt-1.5 sm:pt-0 border-t sm:border-t-0 sm:border-l border-gray-100/80 sm:pl-3">
                   {/* Mode switcher tabs */}
-                  <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
+                  <div className="flex items-center gap-1 rounded-xl bg-gray-100/90 p-1 flex-shrink-0">
                     <button
                       onClick={() => handleRoute(routeOrigin, 'foot')}
-                      className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                        route.profile === 'foot'
-                          ? 'bg-white text-blue-600 shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700'
+                      className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold whitespace-nowrap transition ${
+                        route.profile === 'foot' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
                       }`}
                       title="Modo Pedestre (A pé)"
                     >
-                      <Footprints className="h-3.5 w-3.5" />
-                      A pé
+                      <Footprints className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="whitespace-nowrap">A pé</span>
                     </button>
+
                     <button
                       onClick={() => handleRoute(routeOrigin, 'driving')}
-                      className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                        route.profile === 'driving'
-                          ? 'bg-white text-blue-600 shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700'
+                      className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold whitespace-nowrap transition ${
+                        route.profile === 'driving' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
                       }`}
                       title="Modo Automóvel (Carro/Moto)"
                     >
-                      <Car className="h-3.5 w-3.5" />
-                      Automóvel
+                      <Car className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="whitespace-nowrap">Carro</span>
                     </button>
                   </div>
 
-                  <div className="text-xs font-bold text-blue-600 ml-1">
-                    {formatDistance(route.distance)} · {formatDuration(route.duration)}
-                  </div>
+                  {/* Distance & Duration Badge */}
+                  {(() => {
+                    const target = routeTargetPlace || selectedPlace;
+                    const bannerDist = target
+                      ? haversineDistance(
+                          routeOrigin === 'user' && userLocation ? userLocation.lat : UNIVERSITY.lat,
+                          routeOrigin === 'user' && userLocation ? userLocation.lng : UNIVERSITY.lng,
+                          target.lat,
+                          target.lng
+                        ) * 1.25
+                      : route.distance;
+                    const bannerDur = route.profile === 'foot' ? estimateWalkingTime(bannerDist) : estimateDrivingTime(bannerDist);
+                    return (
+                      <div className="flex items-center gap-1.5 rounded-xl bg-blue-50/80 px-2.5 py-1 text-xs font-semibold text-blue-900 border border-blue-100/80 shadow-2xs whitespace-nowrap flex-shrink-0">
+                        <span className="flex items-center gap-1 whitespace-nowrap font-medium text-blue-700">
+                          <Clock className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+                          <span>{formatDuration(bannerDur)}</span>
+                        </span>
+                        <span className="text-blue-300 font-bold">·</span>
+                        <span className="whitespace-nowrap font-bold text-blue-800">{formatDistance(bannerDist)}</span>
+                      </div>
+                    );
+                  })()}
 
-                  <button onClick={handleClearRoute} className="ml-1 rounded-lg p-1 text-gray-400 hover:bg-gray-100" title="Fechar rota">
+                  {/* Desktop Close Button */}
+                  <button
+                    onClick={handleClearRoute}
+                    className="hidden sm:flex flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition ml-1"
+                    title="Fechar rota"
+                  >
                     <X className="h-4 w-4" />
                   </button>
                 </div>

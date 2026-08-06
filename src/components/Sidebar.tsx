@@ -16,6 +16,9 @@ interface SidebarProps {
   onSelectPlace: (place: PlaceWithMeta) => void;
   showFavoritesOnly: boolean;
   onToggleFavoritesFilter: () => void;
+  userLocationActive?: boolean;
+  distanceOrigin?: 'university' | 'user';
+  onToggleDistanceOrigin?: () => void;
 }
 
 export default function Sidebar({
@@ -29,6 +32,9 @@ export default function Sidebar({
   onSelectPlace,
   showFavoritesOnly,
   onToggleFavoritesFilter,
+  userLocationActive = false,
+  distanceOrigin = 'university',
+  onToggleDistanceOrigin,
 }: SidebarProps) {
   const [showFiltersGrid, setShowFiltersGrid] = useState(false);
 
@@ -187,6 +193,22 @@ export default function Sidebar({
 
       {/* Place list */}
       <div className="flex-1 overflow-y-auto p-3.5 bg-gray-50/60">
+        {userLocationActive && (
+          <div className="mb-3 flex items-center justify-between rounded-xl bg-blue-50/90 px-3 py-1.5 text-xs text-blue-900 border border-blue-100 shadow-xs">
+            <span className="font-semibold text-[11px]">
+              Distâncias de: <strong>{distanceOrigin === 'user' ? '📍 Sua Posição (GPS)' : '🏛️ UFC Russas'}</strong>
+            </span>
+            {onToggleDistanceOrigin && (
+              <button
+                onClick={onToggleDistanceOrigin}
+                className="font-bold text-blue-600 hover:text-blue-800 text-[11px] underline ml-2 flex-shrink-0"
+              >
+                Trocar
+              </button>
+            )}
+          </div>
+        )}
+
         {filteredPlaces.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center p-8 text-center">
             <MapPin className="mb-3 h-10 w-10 text-gray-300" />
@@ -272,7 +294,7 @@ export default function Sidebar({
                     <div className="flex items-center justify-between gap-2 mt-auto">
                       {place.distance != null ? (
                         <span className="flex items-center gap-1 text-xs font-bold text-blue-600">
-                          <MapPin className="h-3 w-3" />
+                          <span>{distanceOrigin === 'user' ? '📍' : '🏛️'}</span>
                           {formatDistance(place.distance)}
                         </span>
                       ) : <div />}

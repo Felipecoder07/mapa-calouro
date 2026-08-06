@@ -4,8 +4,18 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
-  overscroll-behavior-y: none;
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .leaflet-container {
@@ -62,6 +72,15 @@ html, body {
 
 .animate-fade-in {
   animation: fade-in 0.25s ease-out;
+}
+
+@keyframes fade-in-center {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.animate-fade-in-center {
+  animation: fade-in-center 0.25s ease-out forwards;
 }
 
 @keyframes slide-in-right {

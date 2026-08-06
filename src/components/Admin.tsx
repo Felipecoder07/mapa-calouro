@@ -7,12 +7,10 @@ import {
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { ADMIN_PASSWORD_KEY, UNIVERSITY } from '@/lib/constants';
-import { fetchCategories, fetchPlaces, createPlace, updatePlace, deletePlace, createCategory, deleteCategory } from '@/lib/api';
+import { fetchCategories, fetchPlaces, createPlace, updatePlace, deletePlace, createCategory, deleteCategory, loginAdmin, getAdminToken } from '@/lib/api';
 import { getCategoryIcon, getCategoryEmoji } from '@/lib/icons';
 import { haversineDistance } from '@/lib/distance';
 import type { Place, Category } from '@/types';
-
-const ADMIN_PASSWORD = 'admin123';
 
 interface AdminProps {
   onExit: () => void;
@@ -269,8 +267,10 @@ export default function Admin({ onExit }: AdminProps) {
     };
   }, [showCatDropdown, updateCatDropdownPosition]);
 
-  const handleLogin = () => {
-    if (password === ADMIN_PASSWORD) {
+  const handleLogin = async () => {
+    setError('');
+    const ok = await loginAdmin(password);
+    if (ok) {
       sessionStorage.setItem(ADMIN_PASSWORD_KEY, 'true');
       setAuthed(true);
       setError('');
@@ -897,8 +897,8 @@ export default function Admin({ onExit }: AdminProps) {
 
   if (!authed) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
+      <div className="flex min-h-screen items-center justify-center bg-slate-200/80 p-4">
+        <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl border border-slate-300/50">
           <div className="mb-6 text-center">
             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-blue-100">
               <Lock className="h-7 w-7 text-blue-600" />

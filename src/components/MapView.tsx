@@ -91,7 +91,11 @@ function MapController({
   useEffect(() => {
     if (route && route.coordinates.length > 0) {
       const bounds = L.latLngBounds(route.coordinates);
-      map.fitBounds(bounds, { padding: [60, 60] });
+      map.fitBounds(bounds, {
+        padding: [90, 90],
+        maxZoom: 16.5, // Prevents over-zooming on short campus routes
+        animate: true,
+      });
     }
   }, [route, map]);
 
@@ -263,7 +267,6 @@ export default function MapView({
                 {place.distance != null && (
                   <div className="mt-1 text-xs text-blue-600 font-medium">
                     {formatDistance(place.distance)}
-                    {place.duration != null && ` · ${formatDuration(place.duration)}`}
                   </div>
                 )}
               </div>
