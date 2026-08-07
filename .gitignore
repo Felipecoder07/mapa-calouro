@@ -24,3 +24,4 @@ dist-ssr
 data/*.sqlite
 data/*.sqlite-journal
 test-results/
+SKILL/
