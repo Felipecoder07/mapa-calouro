@@ -1,6 +1,6 @@
-# 📋 Documento de Especificação de Requisitos de Software (SRS) - Exaustivo
+# 📋 Documento de Especificação de Requisitos de Software
 ## Sistema: Mapa do Calouro - UFC Campus Russas
-**Versão:** 1.0.0 | **Data:** Agosto de 2026 | **Status:** Aprovado para Produção | **Nível:** Engenharia Sênior
+**Versão:** 1.0.0 | **Data:** Agosto de 2026 | **Status:** Aprovado para Produção 
 
 ---
 
@@ -61,7 +61,7 @@ O **Mapa do Calouro** é uma aplicação web progressiva e reativa (Single Page 
 
 * **[RF-07] Persistência de Favoritos:**
   - O usuário deve poder favoritar/desfavoritar qualquer local com 1 toque na estrela.
-  - Os favoritos devem ser salvos no `localStorage` do navegador e ser filtráveis rapidamente no botão de filtro "Apenas Favoritos ❤️".
+  - Os favoritos devem ser salvos no `localStorage` do navegador e ser filtráveis rapidamente no botão de filtro "Apenas Favoritos ".
 
 ---
 
@@ -167,47 +167,4 @@ O **Mapa do Calouro** é uma aplicação web progressiva e reativa (Single Page 
 
 ---
 
-## 5. Diagrama de Arquitetura do Sistema
 
-```mermaid
-graph TD
-    ClientMobile["📱 Dispositivo Mobile (Navegador Celular)"] -->|HTTPS CDN| Vercel["⚡ Vercel Global Edge Network"]
-    ClientDesktop["💻 Computador (Navegador Desktop)"] -->|HTTPS CDN| Vercel
-    
-    subgraph "Camada de Frontend SPA (React 18 + TS + Vite)"
-        Vercel --> ReactApp["⚛️ React SPA App"]
-        ReactApp --> LeafletMap["🗺️ Leaflet Map Motor"]
-    end
-    
-    subgraph "Camada de Dados & Nuvem"
-        ReactApp -->|1. Prioridade Nuvem| SupabaseDB["⚡ Supabase PostgreSQL Cloud"]
-        ReactApp -.->|2. Servidor Local| ExpressServer["⚡ Node.js / Express + SQLite"]
-        ReactApp -.->|3. Fallback Offline| LocalStorage["📦 Browser LocalStorage"]
-    end
-
-    subgraph "Serviço Externo de Geoprocessamento"
-        LeafletMap -->|OSRM Route API| OSRM["🌐 OSRM Project Routing Engine"]
-        LeafletMap -->|Tiles HD| Esri["🛰️ Esri ArcGIS Satellite & OpenStreetMap"]
-    end
-
-    subgraph "Robô de Manutenção 24/7"
-        GithubActions["🤖 GitHub Actions (Keep-Alive Cronjob)"] -->|Ping Diário 06:00 AM| SupabaseDB
-    end
-```
-
----
-
-## 6. Mapeamento Completo de Arquivos do Sistema
-
-- [src/App.tsx](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/App.tsx) — Componente raiz, gerenciamento de estado global, monitoramento GPS contínuo, polling 10s e Bottom Sheet mobile.
-- [src/components/MapView.tsx](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/components/MapView.tsx) — Motor do mapa Leaflet, alternador de 4 camadas, aproximação suave sem tremores (`flyTo`), dinamismo de `maxZoom` e recorte de rota.
-- [src/components/PlaceDetails.tsx](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/components/PlaceDetails.tsx) — Painel tátil 60fps de detalhes, galeria de fotos, botão de favoritar, avaliações dos alunos e cálculo por origem.
-- [src/components/Admin.tsx](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/components/Admin.tsx) — Painel Admin, autenticação por token, assistente inteligente por link do Google Maps, seletor de emojis e cores.
-- [src/components/Sidebar.tsx](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/components/Sidebar.tsx) — Barra lateral desktop com busca textual, carrossel de pílulas de categorias e lista de locais.
-- [src/lib/api.ts](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/lib/api.ts) — Camada de persistência relacional com prioridade tripla (Supabase ➔ SQLite ➔ LocalStorage).
-- [src/lib/constants.ts](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/lib/constants.ts) — Coordenadas oficiais do Campus UFC Russas e portaria.
-- [src/lib/mapUtils.ts](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/lib/mapUtils.ts) — Conector da API de rotas OSRM e gerador de marcadores visuais.
-- [src/lib/distance.ts](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/src/lib/distance.ts) — Fórmula de Haversine para distâncias em linha reta e estimativas por tipo de transporte.
-- [.github/workflows/keepalive.yml](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/.github/workflows/keepalive.yml) — Workflow do GitHub Actions para manutenção diária 24/7 do banco de dados na nuvem.
-- [server/index.js](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/server/index.js) — Backend Express + SQLite com sanitização XSS, validações e controle de CORS.
-- [data/supabase_seed.sql](file:///c:/Users/Mateus/Downloads/mapa-calouro-main/data/supabase_seed.sql) — Script SQL de migração automatizada para o Supabase com tabelas, RLS e dados.
