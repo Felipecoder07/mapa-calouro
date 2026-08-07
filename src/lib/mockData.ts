@@ -218,7 +218,28 @@ export const updateLocalPlace = (id: string, updates: Partial<Omit<Place, 'id' |
   const places = getLocalPlaces();
   const categories = getLocalCategories();
   const index = places.findIndex((p) => p.id === id);
-  if (index === -1) throw new Error('Local não encontrado');
+
+  const matchedCat = categories.find((c) => c.id === updates.category_id) || categories[0];
+
+  if (index === -1) {
+    const newPlace: Place = {
+      id,
+      name: updates.name || 'Local',
+      description: updates.description || null,
+      address: updates.address || '',
+      lat: updates.lat || -4.947,
+      lng: updates.lng || -37.974,
+      category_id: updates.category_id || matchedCat?.id || 'cat-1',
+      category: matchedCat,
+      hours: updates.hours || null,
+      contact: updates.contact || null,
+      photos: updates.photos || [],
+      created_at: new Date().toISOString(),
+    };
+    places.unshift(newPlace);
+    localStorage.setItem(STORAGE_KEYS.PLACES, JSON.stringify(places));
+    return newPlace;
+  }
 
   const updated: Place = {
     ...places[index],
@@ -234,5 +255,10 @@ export const deleteLocalPlace = (id: string): void => {
   const places = getLocalPlaces().filter((p) => p.id !== id);
   localStorage.setItem(STORAGE_KEYS.PLACES, JSON.stringify(places));
   const reviews = getLocalReviews().filter((r) => r.place_id !== id);
+  localStorage.setItem(STORAGE_KEYS.REVIEWS, JSON.stringify(reviews));
+};
+
+export const deleteLocalReview = (id: string): void => {
+  const reviews = getLocalReviews().filter((r) => r.id !== id);
   localStorage.setItem(STORAGE_KEYS.REVIEWS, JSON.stringify(reviews));
 };

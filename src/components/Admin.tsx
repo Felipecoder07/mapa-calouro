@@ -2,15 +2,15 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Lock, LogOut, Plus, Pencil, Trash2, X, Search, Loader2,
   Save, MapPin, ArrowLeft, LocateFixed, Zap, Upload, Image as ImageIcon,
-  Tag, Compass,
+  Tag, Compass, Star, Send,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { ADMIN_PASSWORD_KEY, UNIVERSITY } from '@/lib/constants';
-import { fetchCategories, fetchPlaces, createPlace, updatePlace, deletePlace, createCategory, deleteCategory, loginAdmin, getAdminToken } from '@/lib/api';
+import { fetchCategories, fetchPlaces, createPlace, updatePlace, deletePlace, createCategory, deleteCategory, loginAdmin, getAdminToken, fetchReviews, addReview, deleteReview } from '@/lib/api';
 import { getCategoryIcon, getCategoryEmoji } from '@/lib/icons';
 import { haversineDistance } from '@/lib/distance';
-import type { Place, Category } from '@/types';
+import type { Place, Category, Review } from '@/types';
 
 interface AdminProps {
   onExit: () => void;
@@ -183,6 +183,14 @@ export default function Admin({ onExit }: AdminProps) {
   const [showCatDropdown, setShowCatDropdown] = useState(false);
   const [catDropdownRect, setCatDropdownRect] = useState<DOMRect | null>(null);
   const catDropdownBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Review management states for Admin Place Modal
+  const [modalReviews, setModalReviews] = useState<Review[]>([]);
+  const [loadingModalReviews, setLoadingModalReviews] = useState(false);
+  const [adminReviewAuthor, setAdminReviewAuthor] = useState('');
+  const [adminReviewRating, setAdminReviewRating] = useState(5);
+  const [adminReviewComment, setAdminReviewComment] = useState('');
+  const [submittingAdminReview, setSubmittingAdminReview] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(ADMIN_PASSWORD_KEY);
@@ -391,6 +399,15 @@ export default function Admin({ onExit }: AdminProps) {
     });
     setGeoSearchQuery('');
     setAutoFillInput('');
+    setModalReviews([]);
+    setAdminReviewAuthor('');
+    setAdminReviewRating(5);
+    setAdminReviewComment('');
+    setLoadingModalReviews(true);
+    fetchReviews(place.id)
+      .then(setModalReviews)
+      .catch(() => setModalReviews([]))
+      .finally(() => setLoadingModalReviews(false));
     setShowForm(true);
   };
 
@@ -405,6 +422,10 @@ export default function Admin({ onExit }: AdminProps) {
     });
     setGeoSearchQuery('');
     setAutoFillInput('');
+    setModalReviews([]);
+    setAdminReviewAuthor('');
+    setAdminReviewRating(5);
+    setAdminReviewComment('');
     setShowForm(true);
   };
 
@@ -836,6 +857,54 @@ export default function Admin({ onExit }: AdminProps) {
     }
   };
 
+  const handleAddAdminReview = async () => {
+    if (!adminReviewAuthor.trim()) return;
+    if (editingId) {
+      setSubmittingAdminReview(true);
+      try {
+        const created = await addReview({
+          place_id: editingId,
+          author: adminReviewAuthor.trim(),
+          rating: adminReviewRating,
+          comment: adminReviewComment.trim() || null,
+        });
+        setModalReviews((prev) => [created, ...prev]);
+        setAdminReviewAuthor('');
+        setAdminReviewRating(5);
+        setAdminReviewComment('');
+      } catch {
+        alert('Erro ao salvar avaliação');
+      } finally {
+        setSubmittingAdminReview(false);
+      }
+    } else {
+      const tempReview: Review = {
+        id: `rev-temp-${Date.now()}-${Math.random()}`,
+        place_id: '',
+        author: adminReviewAuthor.trim(),
+        rating: adminReviewRating,
+        comment: adminReviewComment.trim() || null,
+        created_at: new Date().toISOString(),
+      };
+      setModalReviews((prev) => [tempReview, ...prev]);
+      setAdminReviewAuthor('');
+      setAdminReviewRating(5);
+      setAdminReviewComment('');
+    }
+  };
+
+  const handleDeleteAdminReview = async (review: Review) => {
+    if (!confirm('Deseja excluir esta avaliação?')) return;
+    try {
+      if (!review.id.startsWith('rev-temp-')) {
+        await deleteReview(review.id);
+      }
+      setModalReviews((prev) => prev.filter((r) => r.id !== review.id));
+    } catch {
+      alert('Erro ao excluir avaliação');
+    }
+  };
+
   const handleSave = async () => {
     const name = form.name.trim();
     const categoryId = form.category_id || categories[0]?.id || 'cat-1';
@@ -872,14 +941,26 @@ export default function Admin({ onExit }: AdminProps) {
       if (editingId) {
         await updatePlace(editingId, payload);
       } else {
-        await createPlace(payload);
+        const created = await createPlace(payload);
+        if (modalReviews.length > 0) {
+          for (const rev of modalReviews) {
+            await addReview({
+              place_id: created.id,
+              author: rev.author,
+              rating: rev.rating,
+              comment: rev.comment,
+            });
+          }
+        }
       }
       setShowForm(false);
       setEditingId(null);
       setForm(emptyForm);
+      setModalReviews([]);
       await loadData();
-    } catch {
-      alert('Erro ao salvar o local.');
+    } catch (e) {
+      console.error('Erro em handleSave:', e);
+      alert('Erro ao salvar o local. Verifique os campos e tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -1614,6 +1695,111 @@ export default function Admin({ onExit }: AdminProps) {
                         ))}
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Reviews Management Section (Admin Only) */}
+              <div className="space-y-3 border-t border-gray-100 pt-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                    ⭐ Avaliações do Local ({modalReviews.length})
+                  </h3>
+                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
+                    Gestão Admin PET
+                  </span>
+                </div>
+
+                {/* Existing Reviews List */}
+                {loadingModalReviews ? (
+                  <div className="flex justify-center py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                  </div>
+                ) : modalReviews.length > 0 ? (
+                  <div className="max-h-44 overflow-y-auto space-y-2 pr-1 rounded-xl border border-gray-100 bg-gray-50/50 p-2">
+                    {modalReviews.map((rev) => (
+                      <div key={rev.id} className="flex items-start justify-between rounded-xl bg-white p-2.5 shadow-2xs border border-gray-100">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-gray-800">{rev.author}</span>
+                            <div className="flex">
+                              {[1, 2, 3, 4, 5].map((n) => (
+                                <Star
+                                  key={n}
+                                  className={`h-3 w-3 ${n <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          {rev.comment && <p className="mt-1 text-xs text-gray-600 leading-relaxed">{rev.comment}</p>}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAdminReview(rev)}
+                          className="rounded-lg p-1 text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition"
+                          title="Excluir avaliação"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic">Nenhuma avaliação cadastrada para este local ainda.</p>
+                )}
+
+                {/* Form to add a new review as Admin */}
+                <div className="rounded-xl border border-gray-200/80 bg-gray-50/90 p-3 space-y-2.5">
+                  <p className="text-xs font-bold text-gray-700">➕ Adicionar Avaliação ao Local:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="mb-0.5 block text-[11px] font-medium text-gray-500">Nome do Autor</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: PET Computação, Calouro UFC..."
+                        value={adminReviewAuthor}
+                        onChange={(e) => setAdminReviewAuthor(e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs outline-none focus:border-blue-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-0.5 block text-[11px] font-medium text-gray-500">Nota (1 a 5 estrelas)</label>
+                      <div className="flex items-center gap-1 bg-white px-3 py-1.5 rounded-xl border border-gray-200 h-[34px]">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setAdminReviewRating(n)}
+                          >
+                            <Star
+                              className={`h-4 w-4 transition ${n <= adminReviewRating ? 'fill-amber-400 text-amber-400' : 'text-gray-200 hover:text-amber-300'}`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[11px] font-medium text-gray-500">Comentário / Recomendação</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Ex: Excelente espaço para estudar em grupo, ar condicionado forte!"
+                        value={adminReviewComment}
+                        onChange={(e) => setAdminReviewComment(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAdminReview())}
+                        className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs outline-none focus:border-blue-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddAdminReview}
+                        disabled={submittingAdminReview || !adminReviewAuthor.trim()}
+                        className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-50 shadow-xs"
+                      >
+                        {submittingAdminReview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                        Adicionar
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

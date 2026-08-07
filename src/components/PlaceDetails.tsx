@@ -43,9 +43,6 @@ export default function PlaceDetails({
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [fav, setFav] = useState(false);
-  const [showReviewForm, setShowReviewForm] = useState(false);
-  const [newReview, setNewReview] = useState({ author: '', rating: 5, comment: '' });
-  const [submitting, setSubmitting] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<RouteProfile>('foot');
   const [selectedOrigin, setSelectedOrigin] = useState<'university' | 'user'>('university');
 
@@ -197,26 +194,6 @@ export default function PlaceDetails({
   const handleFavorite = () => {
     const newState = toggleFavorite(place.id);
     setFav(newState);
-  };
-
-  const handleSubmitReview = async () => {
-    if (!newReview.author.trim() || !place) return;
-    setSubmitting(true);
-    try {
-      const review = await addReview({
-        place_id: place.id,
-        author: newReview.author.trim(),
-        rating: newReview.rating,
-        comment: newReview.comment.trim() || null,
-      });
-      setReviews([review, ...reviews]);
-      setNewReview({ author: '', rating: 5, comment: '' });
-      setShowReviewForm(false);
-    } catch {
-      // ignore
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
@@ -389,7 +366,7 @@ export default function PlaceDetails({
                         : 'text-gray-600 hover:text-gray-800'
                       }`}
                   >
-                    📍 De você
+                    👤 De você
                   </button>
                 </div>
               )}
@@ -449,72 +426,68 @@ export default function PlaceDetails({
             </div>
           )}
 
-          {/* Reviews */}
-          <div className="mt-6">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">
-                Avaliações dos estudantes
-              </h3>
+          {/* Route Options & Google Maps Buttons */}
+          <div className="mt-5 space-y-2.5">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Traçar Rota no Mapa</h3>
+            {hasActiveRoute ? (
               <button
-                onClick={() => setShowReviewForm(!showReviewForm)}
-                className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                onClick={onClearRoute}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-50 text-red-600 border border-red-100 py-2.5 text-xs font-semibold transition hover:bg-red-100 shadow-2xs"
               >
-                {showReviewForm ? 'Cancelar' : 'Avaliar'}
+                <X className="h-4 w-4" />
+                Limpar rota ativa
               </button>
-            </div>
-
-            {showReviewForm && (
-              <div className="mb-4 space-y-3 rounded-xl border border-gray-100 p-4 animate-fade-in">
-                <input
-                  type="text"
-                  placeholder="Seu nome"
-                  value={newReview.author}
-                  onChange={(e) => setNewReview({ ...newReview, author: e.target.value })}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                />
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => setNewReview({ ...newReview, rating: n })}
-                    >
-                      <Star
-                        className={`h-6 w-6 transition ${n <= newReview.rating
-                            ? 'fill-amber-400 text-amber-400'
-                            : 'text-gray-200 hover:text-amber-300'
-                          }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-                <textarea
-                  placeholder="Conte sua experiência..."
-                  value={newReview.comment}
-                  onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
-                  rows={3}
-                  className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                />
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={handleSubmitReview}
-                  disabled={!newReview.author.trim() || submitting}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => {
+                    onRoute('university', selectedProfile);
+                    onClose();
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 px-3 text-xs font-semibold text-white transition hover:bg-blue-700 shadow-xs"
                 >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  Enviar avaliação
+                  <Navigation className="h-4 w-4 flex-shrink-0" />
+                  <span>Rota do Campus UFC</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onRoute('user', selectedProfile);
+                    onClose();
+                  }}
+                  disabled={!userLocation}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-2.5 px-3 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  <Navigation className="h-4 w-4 flex-shrink-0" />
+                  <span>{userLocation ? 'Rota da Minha Posição' : 'Sem Sinal GPS'}</span>
                 </button>
               </div>
             )}
+
+            <a
+              href={googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 py-2.5 px-4 text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 transition shadow-2xs"
+            >
+              <ExternalLink className="h-4 w-4 text-blue-600" />
+              Abrir no Google Maps Externo
+            </a>
+          </div>
+
+          {/* Reviews (Positioned at the very end) */}
+          <div className="mt-6 border-t border-gray-100 pt-4 mb-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700">
+                Avaliações dos estudantes ({reviews.length})
+              </h3>
+            </div>
 
             {loadingReviews ? (
               <div className="flex justify-center py-4">
                 <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
               </div>
             ) : reviews.length === 0 ? (
-              <p className="text-sm text-gray-400">Nenhuma avaliação ainda. Seja o primeiro!</p>
+              <p className="text-sm text-gray-400">Nenhuma avaliação cadastrada para este local.</p>
             ) : (
               <div className="space-y-3">
                 {reviews.map((review) => (
@@ -544,55 +517,6 @@ export default function PlaceDetails({
               </div>
             )}
           </div>
-        </div>
-
-        {/* Footer: Route buttons & Transport profile selector */}
-        <div className="flex-shrink-0 border-t border-gray-100 p-4 bg-white">
-          {hasActiveRoute ? (
-            <button
-              onClick={onClearRoute}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-200"
-            >
-              <X className="h-4 w-4" />
-              Limpar rota
-            </button>
-          ) : (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => {
-                    onRoute('university', selectedProfile);
-                    onClose();
-                  }}
-                  className="flex flex-col items-center gap-1 rounded-xl bg-blue-600 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-700 shadow-sm"
-                >
-                  <Navigation className="h-4 w-4" />
-                  Da universidade
-                </button>
-                <button
-                  onClick={() => {
-                    onRoute('user', selectedProfile);
-                    onClose();
-                  }}
-                  disabled={!userLocation}
-                  className="flex flex-col items-center gap-1 rounded-xl bg-emerald-600 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 shadow-sm"
-                >
-                  <Navigation className="h-4 w-4" />
-                  {userLocation ? 'De onde estou' : 'Sem GPS'}
-                </button>
-              </div>
-
-              <a
-                href={googleMapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 py-2 text-xs font-medium text-gray-500 transition hover:bg-gray-50"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Abrir no Google Maps
-              </a>
-            </div>
-          )}
         </div>
       </div>
     </div>

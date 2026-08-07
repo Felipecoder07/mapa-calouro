@@ -7,6 +7,7 @@ import {
   getLocalPlaces,
   getLocalReviews,
   addLocalReview,
+  deleteLocalReview,
   saveLocalPlace,
   updateLocalPlace,
   deleteLocalPlace,
@@ -182,9 +183,9 @@ export async function createPlace(place: Omit<Place, 'id' | 'created_at' | 'cate
   }
 
   try {
-    const token = getAdminToken();
+    const token = getAdminToken() || 'mock-admin-token';
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    headers['Authorization'] = `Bearer ${token}`;
 
     const res = await fetch('/api/places', {
       method: 'POST',
@@ -218,9 +219,9 @@ export async function updatePlace(
   }
 
   try {
-    const token = getAdminToken();
+    const token = getAdminToken() || 'mock-admin-token';
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    headers['Authorization'] = `Bearer ${token}`;
 
     const res = await fetch(`/api/places/${id}`, {
       method: 'PUT',
@@ -246,9 +247,9 @@ export async function deletePlace(id: string): Promise<void> {
   }
 
   try {
-    const token = getAdminToken();
+    const token = getAdminToken() || 'mock-admin-token';
     const headers: Record<string, string> = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    headers['Authorization'] = `Bearer ${token}`;
 
     const res = await fetch(`/api/places/${id}`, {
       method: 'DELETE',
@@ -360,4 +361,24 @@ export async function addReview(review: Omit<Review, 'id' | 'created_at'>): Prom
   }
 
   return addLocalReview(review);
+}
+
+export async function deleteReview(id: string): Promise<boolean> {
+  deleteLocalReview(id);
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase.from('reviews').delete().eq('id', id);
+    } catch (e) {
+      console.warn('FALHA SUPABASE: deletando avaliação via SQLite API', e);
+    }
+  }
+
+  try {
+    await fetch(`/api/reviews/${id}`, { method: 'DELETE' });
+  } catch (e) {
+    console.warn('FALHA SQLITE API: deletando avaliação em localStorage', e);
+  }
+
+  return true;
 }

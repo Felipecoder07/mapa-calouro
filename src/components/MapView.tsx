@@ -5,6 +5,7 @@ import {
   Marker,
   Popup,
   useMap,
+  useMapEvents,
   Polyline,
   LayersControl,
 } from 'react-leaflet';
@@ -17,7 +18,7 @@ import {
   type RouteInfo,
 } from '@/lib/mapUtils';
 import type { PlaceWithMeta, Category } from '@/types';
-import { formatDistance, formatDuration } from '@/lib/distance';
+import { formatDistance, formatDuration, haversineDistance } from '@/lib/distance';
 
 interface MapViewProps {
   places: PlaceWithMeta[];
@@ -28,6 +29,9 @@ interface MapViewProps {
   route: RouteInfo | null;
   routeOrigin: 'university' | 'user' | null;
   onMapReady?: (map: L.Map) => void;
+  isFollowing?: boolean;
+  suppressFit?: boolean; // when true, skip fitBounds (used on silent reroutes)
+  onStopFollowing?: () => void;
 }
 
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -79,44 +83,71 @@ function MapController({
   selectedPlace,
   userLocation,
   route,
+  isFollowing,
+  suppressFit,
+  onStopFollowing,
 }: {
   selectedPlace: PlaceWithMeta | null;
   userLocation: { lat: number; lng: number } | null;
   route: RouteInfo | null;
+  isFollowing?: boolean;
+  suppressFit?: boolean;
+  onStopFollowing?: () => void;
 }) {
   const map = useMap();
   const prevSelectedId = useRef<string | null>(null);
-  const prevUserLocation = useRef<{ lat: number; lng: number } | null>(null);
+  const hasCenteredUserRef = useRef<boolean>(false);
+  const didFitRouteRef = useRef<string | null>(null);
+
+  // Stop following mode immediately if the user manually drags the map (like Google Maps)
+  useMapEvents({
+    dragstart() {
+      if (isFollowing && onStopFollowing) {
+        onStopFollowing();
+      }
+    },
+  });
 
   useEffect(() => {
     if (route && route.coordinates.length > 0) {
+      const first = route.coordinates[0];
+      const last = route.coordinates[route.coordinates.length - 1];
+      const routeKey = `${first}-${last}`;
+      if (didFitRouteRef.current === routeKey) return;
+      didFitRouteRef.current = routeKey;
+      if (suppressFit) return;
       const bounds = L.latLngBounds(route.coordinates);
-      map.fitBounds(bounds, {
-        padding: [90, 90],
-        maxZoom: 16.5, // Prevents over-zooming on short campus routes
-        animate: true,
-      });
+      map.fitBounds(bounds, { padding: [90, 90], maxZoom: 16.5, animate: true });
+    } else if (!route) {
+      didFitRouteRef.current = null;
     }
-  }, [route, map]);
+  }, [route, map, suppressFit]);
 
-  // Fly to selected place ONLY when a new place is clicked (prevents resetting user zoom on re-render)
+  // Fly to selected place when a place is clicked
   useEffect(() => {
-    if (selectedPlace && selectedPlace.id !== prevSelectedId.current) {
+    if (selectedPlace) {
       prevSelectedId.current = selectedPlace.id;
-      const targetZoom = Math.max(map.getZoom(), 16);
+      const targetZoom = Math.max(map.getZoom(), 17.5);
       map.flyTo([selectedPlace.lat, selectedPlace.lng], targetZoom, { duration: 0.8 });
-    } else if (!selectedPlace) {
+    } else {
       prevSelectedId.current = null;
     }
   }, [selectedPlace, map]);
 
-  // Move to user location ONLY once when location is acquired
+  // Move to user location ONLY ONCE when location is first acquired
   useEffect(() => {
-    if (userLocation && !selectedPlace && !route && userLocation !== prevUserLocation.current) {
-      prevUserLocation.current = userLocation;
+    if (userLocation && !hasCenteredUserRef.current && !selectedPlace && !route) {
+      hasCenteredUserRef.current = true;
       map.setView([userLocation.lat, userLocation.lng], Math.max(map.getZoom(), 15));
     }
   }, [userLocation, selectedPlace, route, map]);
+
+  // Live follow: smoothly pan to user position ONLY when isFollowing is active
+  useEffect(() => {
+    if (isFollowing && userLocation) {
+      map.panTo([userLocation.lat, userLocation.lng], { animate: true, duration: 0.5 });
+    }
+  }, [isFollowing, userLocation, map]);
 
   return null;
 }
@@ -155,6 +186,9 @@ export default function MapView({
   route,
   routeOrigin,
   onMapReady,
+  isFollowing,
+  suppressFit,
+  onStopFollowing,
 }: MapViewProps) {
   const categoryMap = useMemo(() => {
     const map = new Map<string, Category>();
@@ -162,12 +196,30 @@ export default function MapView({
     return map;
   }, [categories]);
 
+  // Trim polyline points behind user location when navigating from userLocation
+  const activeRoutePositions = useMemo<L.LatLngTuple[]>(() => {
+    if (!route || route.coordinates.length === 0) return [];
+    if (routeOrigin === 'user' && userLocation) {
+      let minDistance = Infinity;
+      let closestIdx = 0;
+      route.coordinates.forEach((pt, idx) => {
+        const d = haversineDistance(userLocation.lat, userLocation.lng, pt[0], pt[1]);
+        if (d < minDistance) {
+          minDistance = d;
+          closestIdx = idx;
+        }
+      });
+      return [[userLocation.lat, userLocation.lng], ...route.coordinates.slice(closestIdx)] as L.LatLngTuple[];
+    }
+    return route.coordinates as L.LatLngTuple[];
+  }, [route, routeOrigin, userLocation]);
+
   return (
     <MapContainer
       center={[UNIVERSITY.lat, UNIVERSITY.lng]}
       zoom={16}
       maxZoom={22}
-      minZoom={12}
+      minZoom={1}
       bounceAtZoomLimits={false}
       zoomSnap={0.5}
       className="h-full w-full"
@@ -216,7 +268,14 @@ export default function MapView({
         </LayersControl.BaseLayer>
       </LayersControl>
 
-      <MapController selectedPlace={selectedPlace} userLocation={userLocation} route={route} />
+      <MapController
+        selectedPlace={selectedPlace}
+        userLocation={userLocation}
+        route={route}
+        isFollowing={isFollowing}
+        suppressFit={suppressFit}
+        onStopFollowing={onStopFollowing}
+      />
 
       <Marker
         position={[UNIVERSITY.lat, UNIVERSITY.lng]}
@@ -256,35 +315,54 @@ export default function MapView({
             icon={createCategoryIcon(category?.color ?? '#78716c', emoji)}
             zIndexOffset={isSelected ? 800 : 0}
             eventHandlers={{
-              click: () => onSelectPlace(place),
+              click: (e) => {
+                const mapInstance = e.target._map;
+                if (mapInstance) {
+                  mapInstance.flyTo([place.lat, place.lng], Math.max(mapInstance.getZoom(), 17.5), { duration: 0.8 });
+                }
+              },
             }}
           >
-            <Popup>
-              <div className="min-w-[160px]">
-                <strong className="text-sm">{place.name}</strong>
-                <br />
-                <span className="text-xs text-gray-500">{category?.name}</span>
-                {place.distance != null && (
-                  <div className="mt-1 text-xs text-blue-600 font-medium">
-                    {formatDistance(place.distance)}
-                  </div>
-                )}
+            <Popup closeButton={false}>
+              <div className="min-w-[170px] p-0.5">
+                <strong className="text-sm text-gray-900 leading-tight block mb-0.5">{place.name}</strong>
+                <span className="text-xs text-gray-500 font-medium">{category?.name}</span>
+
+                <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-gray-100 pt-2">
+                  {place.distance != null ? (
+                    <span className="text-xs text-blue-600 font-bold">
+                      {formatDistance(place.distance)}
+                    </span>
+                  ) : <div />}
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectPlace(place);
+                    }}
+                    className="flex items-center gap-0.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition"
+                  >
+                    <span>Ver detalhes</span>
+                    <span className="text-xs">➔</span>
+                  </button>
+                </div>
               </div>
             </Popup>
           </Marker>
         );
       })}
 
-      {route && route.coordinates.length > 0 && (
+      {route && activeRoutePositions.length > 0 && (
         <>
           {/* Casing / Glow line */}
           <Polyline
-            positions={route.coordinates}
+            positions={activeRoutePositions}
             pathOptions={{ color: '#1d4ed8', weight: 8, opacity: 0.35, lineCap: 'round', lineJoin: 'round' }}
           />
           {/* Main solid vibrant blue route line */}
           <Polyline
-            positions={route.coordinates}
+            positions={activeRoutePositions}
             pathOptions={{ color: '#2563eb', weight: 5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }}
           />
         </>

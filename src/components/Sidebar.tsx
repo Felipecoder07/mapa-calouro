@@ -196,7 +196,7 @@ export default function Sidebar({
         {userLocationActive && (
           <div className="mb-3 flex items-center justify-between rounded-xl bg-blue-50/90 px-3 py-1.5 text-xs text-blue-900 border border-blue-100 shadow-xs">
             <span className="font-semibold text-[11px]">
-              Distâncias de: <strong>{distanceOrigin === 'user' ? '📍 Sua Posição (GPS)' : '🏛️ UFC Russas'}</strong>
+              Distâncias de: <strong>{distanceOrigin === 'user' ? '👤 Sua Posição (GPS)' : '🏛️ UFC Russas'}</strong>
             </span>
             {onToggleDistanceOrigin && (
               <button
@@ -239,7 +239,7 @@ export default function Sidebar({
                   }`}
                 >
                   {/* Photo Thumbnail */}
-                  <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-2xl bg-gray-100 shadow-xs border border-gray-100">
+                  <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100 shadow-xs border border-gray-100">
                     {photo ? (
                       <img
                         src={photo}
@@ -265,42 +265,42 @@ export default function Sidebar({
                   </div>
 
                   {/* Info details */}
-                  <div className="min-w-0 flex-1 flex flex-col justify-between h-20 py-0.5">
-                    <div>
-                      <div className="flex items-center justify-between gap-1">
-                        <h3 className="truncate text-sm font-bold text-gray-900">
-                          {place.name}
-                        </h3>
-                      </div>
-
-                      <div className="mt-1 flex items-center gap-2">
-                        <span
-                          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xs"
-                          style={{ backgroundColor: cat?.color }}
-                        >
-                          <Icon className="h-2.5 w-2.5" />
-                          {cat?.name}
+                  <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5 space-y-1">
+                    {/* Header: Title + Star Rating */}
+                    <div className="flex items-start justify-between gap-1.5">
+                      <h3 className="truncate text-sm font-bold text-gray-900 leading-snug">
+                        {place.name}
+                      </h3>
+                      {place.avgRating != null && place.avgRating > 0 && (
+                        <span className="flex items-center gap-0.5 text-xs font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md flex-shrink-0 border border-amber-100/60">
+                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                          {place.avgRating.toFixed(1)}
                         </span>
-
-                        {place.avgRating != null && place.avgRating > 0 && (
-                          <span className="flex items-center gap-0.5 text-xs font-semibold text-gray-600">
-                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                            {place.avgRating.toFixed(1)}
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 mt-auto">
+                    {/* Category Pill (Tipo do Local) */}
+                    <div>
+                      <span
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold text-white shadow-2xs"
+                        style={{ backgroundColor: cat?.color }}
+                      >
+                        <Icon className="h-2.5 w-2.5" />
+                        {cat?.name}
+                      </span>
+                    </div>
+
+                    {/* Distance Below Category + Footer CTA */}
+                    <div className="flex items-center justify-between gap-2 pt-0.5 border-t border-gray-50/80">
                       {place.distance != null ? (
-                        <span className="flex items-center gap-1 text-xs font-bold text-blue-600">
-                          <span>{distanceOrigin === 'user' ? '📍' : '🏛️'}</span>
+                        <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-600">
+                          <span>{distanceOrigin === 'user' ? '👤' : '🏛️'}</span>
                           {formatDistance(place.distance)}
                         </span>
                       ) : <div />}
 
-                      <span className="flex items-center gap-1 rounded-xl bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-600 transition hover:bg-blue-100">
-                        Ver no mapa
+                      <span className="flex items-center gap-0.5 text-[11px] font-bold text-blue-600 hover:text-blue-700">
+                        Ver detalhes
                         <ChevronRight className="h-3 w-3" />
                       </span>
                     </div>

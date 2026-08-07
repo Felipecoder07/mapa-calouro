@@ -274,45 +274,72 @@ app.post('/api/places', requireAdminAuth, (req, res) => {
 app.put('/api/places/:id', requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
-    const existing = db.prepare('SELECT * FROM places WHERE id = ?').get(id);
-    if (!existing) return res.status(404).json({ error: 'Local não encontrado' });
+    let existing = db.prepare('SELECT * FROM places WHERE id = ?').get(id);
 
     const { name, description, address, lat, lng, category_id, hours, contact, photos } = req.body;
 
-    const numLat = lat !== undefined ? Number(lat) : existing.lat;
-    const numLng = lng !== undefined ? Number(lng) : existing.lng;
+    const numLat = lat !== undefined ? Number(lat) : existing ? existing.lat : -4.947;
+    const numLng = lng !== undefined ? Number(lng) : existing ? existing.lng : -37.974;
 
     if (isNaN(numLat) || isNaN(numLng) || numLat < -90 || numLat > 90 || numLng < -180 || numLng > 180) {
       return res.status(400).json({ error: 'Coordenadas geográficas inválidas' });
     }
 
-    const updatedRecord = {
-      id,
-      name: name !== undefined ? sanitizeString(name) : existing.name,
-      description: description !== undefined ? sanitizeString(description) : existing.description,
-      address: address !== undefined ? sanitizeString(address) : existing.address,
-      lat: numLat,
-      lng: numLng,
-      category_id: category_id !== undefined ? sanitizeString(category_id) : existing.category_id,
-      hours: hours !== undefined ? sanitizeString(hours) : existing.hours,
-      contact: contact !== undefined ? sanitizeString(contact) : existing.contact,
-      photos: photos !== undefined ? JSON.stringify(photos) : existing.photos,
-      created_at: existing.created_at,
-    };
+    if (!existing) {
+      const newRecord = {
+        id,
+        name: sanitizeString(name || 'Novo Local'),
+        description: sanitizeString(description || ''),
+        address: sanitizeString(address || ''),
+        lat: numLat,
+        lng: numLng,
+        category_id: sanitizeString(category_id || 'cat-1'),
+        hours: sanitizeString(hours || ''),
+        contact: sanitizeString(contact || ''),
+        photos: JSON.stringify(photos || []),
+        created_at: new Date().toISOString(),
+      };
+      db.prepare(`
+        INSERT INTO places (id, name, description, address, lat, lng, category_id, hours, contact, photos, created_at)
+        VALUES (@id, @name, @description, @address, @lat, @lng, @category_id, @hours, @contact, @photos, @created_at)
+      `).run(newRecord);
+    } else {
+      const updatedRecord = {
+        id,
+        name: name !== undefined ? sanitizeString(name) : existing.name,
+        description: description !== undefined ? sanitizeString(description) : existing.description,
+        address: address !== undefined ? sanitizeString(address) : existing.address,
+        lat: numLat,
+        lng: numLng,
+        category_id: category_id !== undefined ? sanitizeString(category_id) : existing.category_id,
+        hours: hours !== undefined ? sanitizeString(hours) : existing.hours,
+        contact: contact !== undefined ? sanitizeString(contact) : existing.contact,
+        photos: photos !== undefined ? JSON.stringify(photos) : existing.photos,
+        created_at: existing.created_at,
+      };
 
-    db.prepare(`
-      UPDATE places
-      SET name = @name, description = @description, address = @address, lat = @lat, lng = @lng,
-          category_id = @category_id, hours = @hours, contact = @contact, photos = @photos
-      WHERE id = @id
-    `).run(updatedRecord);
+      db.prepare(`
+        UPDATE places
+        SET name = @name, description = @description, address = @address, lat = @lat, lng = @lng,
+            category_id = @category_id, hours = @hours, contact = @contact, photos = @photos
+        WHERE id = @id
+      `).run(updatedRecord);
+    }
 
     const categories = db.prepare('SELECT * FROM categories').all();
-    const category = categories.find((c) => c.id === updatedRecord.category_id) || categories[0];
+    const category = categories.find((c) => c.id === category_id) || categories[0];
 
     res.json({
-      ...updatedRecord,
-      photos: photos !== undefined ? photos : JSON.parse(updatedRecord.photos || '[]'),
+      id,
+      name,
+      description,
+      address,
+      lat: numLat,
+      lng: numLng,
+      category_id,
+      hours,
+      contact,
+      photos: photos || [],
       category,
     });
   } catch (e) {
@@ -378,6 +405,16 @@ app.post('/api/reviews', (req, res) => {
     `).run(newReview);
 
     res.status(201).json(newReview);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/reviews/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('DELETE FROM reviews WHERE id = ?').run(id);
+    res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
