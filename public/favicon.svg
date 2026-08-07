@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#5b21b6" />
+    </linearGradient>
+    <linearGradient id="pinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+  </defs>
+  <!-- Squircle Background with Purple Gradient -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+  <!-- Outer White Map Pin -->
+  <path d="M256 100c-66.3 0-120 53.7-120 120 0 88 120 212 120 212s120-124 120-212c0-66.3-53.7-120-120-120zm0 160c-22.1 0-40-17.9-40-40s17.9-40 40-40 40 17.9 40 40-17.9 40-40 40z" fill="#ffffff" />
+  <!-- Inner Golden Amber Accent -->
+  <circle cx="256" cy="220" r="28" fill="url(#pinGrad)" />
+</svg>
