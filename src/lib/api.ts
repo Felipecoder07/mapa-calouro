@@ -14,9 +14,10 @@ import {
   clearAllLocalData,
 } from './mockData';
 
-// Priority 1: Supabase (if configured)
-// Priority 2: SQLite API Server (/api/...)
-// Priority 3: Browser localStorage (mockData)
+// Ordem de Prioridade dos Dados:
+// 1. Supabase (nuvem, se configurado)
+// 2. Servidor API SQLite (/api/...)
+// 3. Armazenamento local do navegador (localStorage)
 
 const ADMIN_TOKEN_KEY = 'mapa_calouros_admin_token';
 
@@ -42,7 +43,7 @@ export async function loginAdmin(password: string): Promise<boolean> {
     console.warn('Falha no login admin via API:', e);
   }
 
-  // Fallback for standalone/frontend mode: checks against env variable VITE_ADMIN_PASSWORD
+  // Validação em ambiente local/desenvolvimento via variável de ambiente
   const expectedPass = import.meta.env.VITE_ADMIN_PASSWORD || import.meta.env.ADMIN_PASSWORD || 'admin123';
   if (password === expectedPass) {
     sessionStorage.setItem(ADMIN_TOKEN_KEY, 'mock-admin-token');

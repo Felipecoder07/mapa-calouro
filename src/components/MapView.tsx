@@ -30,7 +30,7 @@ interface MapViewProps {
   routeOrigin: 'university' | 'user' | null;
   onMapReady?: (map: L.Map) => void;
   isFollowing?: boolean;
-  suppressFit?: boolean; // when true, skip fitBounds (used on silent reroutes)
+  suppressFit?: boolean; // quando verdadeiro, ignora fitBounds (usado em recálculos silenciosos)
   onStopFollowing?: () => void;
 }
 
@@ -99,7 +99,7 @@ function MapController({
   const hasCenteredUserRef = useRef<boolean>(false);
   const didFitRouteRef = useRef<string | null>(null);
 
-  // Stop following mode immediately if the user manually drags the map (like Google Maps)
+  // Desativa o modo de acompanhamento se o usuário arrastar o mapa manualmente
   useMapEvents({
     dragstart() {
       if (isFollowing && onStopFollowing) {
@@ -123,7 +123,7 @@ function MapController({
     }
   }, [route, map, suppressFit]);
 
-  // Fly to selected place ONLY when a new place is clicked
+  // Aproxima o mapa suavemente apenas quando um novo local é selecionado
   useEffect(() => {
     if (selectedPlace && selectedPlace.id !== prevSelectedId.current) {
       prevSelectedId.current = selectedPlace.id;
@@ -136,7 +136,7 @@ function MapController({
     }
   }, [selectedPlace, map]);
 
-  // Move to user location ONLY ONCE when location is first acquired
+  // Centraliza na posição do usuário apenas na primeira vez que a localização é obtida
   useEffect(() => {
     if (userLocation && !hasCenteredUserRef.current && !selectedPlace && !route) {
       hasCenteredUserRef.current = true;
@@ -144,7 +144,7 @@ function MapController({
     }
   }, [userLocation, selectedPlace, route, map]);
 
-  // Live follow: smoothly pan to user position ONLY when isFollowing is active
+  // Acompanhamento em tempo real: move o mapa suavemente conforme o usuário caminha
   useEffect(() => {
     if (isFollowing && userLocation) {
       map.panTo([userLocation.lat, userLocation.lng], { animate: true, duration: 0.5 });
@@ -154,7 +154,7 @@ function MapController({
   return null;
 }
 
-// Dynamically updates map maxZoom on the Leaflet map instance when base layers change
+// Ajusta o limite máximo de zoom dinamicamente ao trocar o tipo de mapa (ex: satélite vs vetor)
 function DynamicZoomLimit() {
   const map = useMap();
 

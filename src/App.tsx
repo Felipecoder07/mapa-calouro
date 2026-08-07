@@ -25,7 +25,7 @@ const getCategoryEmoji = (category?: Category | null) => {
   return '📍';
 };
 
-// Mobile touch-draggable Bottom Sheet for Explorar Locais
+// Painel deslizante (Bottom Sheet) para dispositivos móveis
 function MobilePlacesSheet({
   isOpen,
   onClose,
@@ -46,7 +46,7 @@ function MobilePlacesSheet({
   const isExpandedRef = useRef(false);
   const isDraggingRef = useRef(false);
 
-  // Smooth entrance animation
+  // Animação suave de entrada do painel
   useEffect(() => {
     if (!isOpen) return;
     if (sheetRef.current) {
@@ -91,8 +91,7 @@ function MobilePlacesSheet({
       const delta = currentY - dragStartY.current;
       currentDeltaY.current = delta;
 
-      // Only allow pulling DOWN (delta > 0). Pulling UP (delta < 0) is clamped to 0
-      // so the bottom of the modal NEVER lifts off the bottom of the screen!
+      // Permite arrastar apenas para baixo (delta > 0) para manter a base fixa no rodapé da tela
       const clampedDelta = Math.max(0, delta);
       sheetRef.current.style.transform = `translateY(${clampedDelta}px)`;
     };
@@ -105,11 +104,11 @@ function MobilePlacesSheet({
       sheetRef.current.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
 
       if (delta > 110) {
-        // Dragged down past threshold -> Close sheet
+        // Arrastou para baixo além do limite -> fecha o painel
         sheetRef.current.style.transform = 'translateY(100%)';
         setTimeout(onClose, 300);
       } else {
-        // Snap back to grounded bottom-0 position
+        // Retorna para a posição inicial fixada no rodapé
         sheetRef.current.style.transform = 'translateY(0)';
       }
     };

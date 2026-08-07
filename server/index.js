@@ -16,7 +16,7 @@ if (!fs.existsSync(dbDir)) {
 
 const db = new Database(path.join(dbDir, 'database.sqlite'));
 
-// Create tables
+// Criação das tabelas no banco de dados SQLite
 db.exec(`
   CREATE TABLE IF NOT EXISTS categories (
     id TEXT PRIMARY KEY,
@@ -51,7 +51,7 @@ db.exec(`
   );
 `);
 
-// Initial categories seed if empty
+// Carga inicial de categorias padrão se o banco estiver vazio
 const countStmt = db.prepare('SELECT COUNT(*) as count FROM categories');
 const { count } = countStmt.get();
 
@@ -84,7 +84,7 @@ if (count === 0) {
 
 const app = express();
 
-// Configurable CORS
+// Configuração de segurança do CORS
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
 app.use(
   cors({
@@ -101,7 +101,7 @@ app.use(
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Admin Security Auth Tokens
+// Gerenciamento de tokens de sessão do Painel Admin
 const activeAdminTokens = new Set();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 

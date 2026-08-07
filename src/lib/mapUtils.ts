@@ -1,6 +1,7 @@
 import L from 'leaflet';
 import { OSRM_BASE } from './constants';
 
+// Criação de marcadores personalizados por categoria
 export function createCategoryIcon(color: string, emoji: string): L.DivIcon {
   return L.divIcon({
     className: 'custom-marker',
@@ -28,6 +29,7 @@ export function createCategoryIcon(color: string, emoji: string): L.DivIcon {
   });
 }
 
+// Marcador especial em destaque para a Universidade Federal do Ceará
 export function createUniversityIcon(): L.DivIcon {
   return L.divIcon({
     className: 'university-marker',
@@ -55,6 +57,7 @@ export function createUniversityIcon(): L.DivIcon {
   });
 }
 
+// Marcador azul pulso para a posição em tempo real do usuário
 export function createUserLocationIcon(): L.DivIcon {
   return L.divIcon({
     className: 'user-location-marker',
@@ -82,6 +85,7 @@ export interface RouteInfo {
   profile: RouteProfile;
 }
 
+// Requisição de cálculo de rotas urbanas via API OSRM
 export async function fetchRoute(
   fromLat: number,
   fromLng: number,
