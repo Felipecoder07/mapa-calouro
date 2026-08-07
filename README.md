@@ -106,8 +106,9 @@ npm run test:e2e
 
 ---
 
-## 📄 Guias de Implantação
+## 📄 Documentação e Guias Técnicos
 
+- 📋 [Especificação de Requisitos de Software SRS (ESPECIFICACAO_REQUISITOS_SRS.md)](./docs/ESPECIFICACAO_REQUISITOS_SRS.md)
 - 🚀 [Guia Oficial de Deploy em Produção (GUIA_DEPLOY_PRODUCAO.md)](./docs/GUIA_DEPLOY_PRODUCAO.md)
 - 🔄 [Manutenção Automática do Supabase (MANUTENCAO_KEEPALIVE_SUPABASE.md)](./docs/MANUTENCAO_KEEPALIVE_SUPABASE.md)
 

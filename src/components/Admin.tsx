@@ -1022,59 +1022,67 @@ export default function Admin({ onExit }: AdminProps) {
   const currentLngNum = parseFloat(form.lng) || UNIVERSITY.lng;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-12">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-gray-100 bg-white px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-bold text-gray-800">Painel Administrativo</h1>
-            <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-              {places.length} locais
-            </span>
-            <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-semibold text-purple-700">
-              {categories.length} categorias
-            </span>
+      <header className="sticky top-0 z-20 border-b border-gray-100 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3.5 sm:py-4 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-800 leading-tight">Painel Administrativo</h1>
+              <p className="text-xs text-gray-400 sm:hidden">Gestão de locais e categorias</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs sm:text-sm font-semibold text-blue-700 shadow-xs">
+                {places.length} locais
+              </span>
+              <span className="rounded-full bg-purple-100 px-3 py-1 text-xs sm:text-sm font-semibold text-purple-700 shadow-xs">
+                {categories.length} categorias
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowCategoryModal(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3.5 py-2 text-sm font-semibold text-purple-700 transition hover:bg-purple-100"
+              className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-xs sm:text-sm font-semibold text-purple-700 transition hover:bg-purple-100 active:scale-95"
             >
-              <Tag className="h-4 w-4" />
-              Categorias ({categories.length})
+              <Tag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Categorias</span>
             </button>
             <button
               onClick={startCreate}
-              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 shadow-md"
+              className="flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-blue-700 shadow-md active:scale-95"
             >
-              <Plus className="h-4 w-4" />
-              Novo local
+              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>Novo local</span>
             </button>
             <button
               onClick={onExit}
-              className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3.5 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+              className="flex items-center justify-center gap-1 rounded-xl border border-gray-200 px-2.5 py-2 text-xs sm:text-sm font-medium text-gray-600 transition hover:bg-gray-50 active:scale-95"
+              title="Voltar ao mapa"
             >
-              <MapPin className="h-4 w-4" />
-              Ver mapa
+              <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Ver mapa</span>
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+              className="flex items-center justify-center rounded-xl border border-gray-200 p-2 sm:px-3 text-xs sm:text-sm font-medium text-gray-600 transition hover:bg-gray-50 active:scale-95"
+              title="Sair do painel"
             >
-              <LogOut className="h-4 w-4" />
-              Sair
+              <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline ml-1">Sair</span>
             </button>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl p-6">
+      <div className="mx-auto max-w-5xl px-3 sm:px-6 py-4 sm:py-6">
         {/* Search */}
         <div className="mb-4 relative">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Buscar local cadastrado por nome..."
+            placeholder="Buscar local por nome ou categoria..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 shadow-sm"
@@ -1086,68 +1094,115 @@ export default function Admin({ onExit }: AdminProps) {
             <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-            <table className="w-full">
-              <thead className="border-b border-gray-100 bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Nome</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Categoria</th>
-                  <th className="hidden px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase md:table-cell">Endereço</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredPlaces.map((place) => {
-                  const cat = categories.find((c) => c.id === place.category_id);
-                  const Icon = getCategoryIcon(cat?.icon ?? 'MapPin');
-                  const emoji = getCategoryEmoji(cat);
-                  return (
-                    <tr key={place.id} className="transition hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-base shadow-sm"
-                            style={{ backgroundColor: `${cat?.color}15` }}
-                            title={cat?.name}
-                          >
-                            {emoji}
+          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b border-gray-100 bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Nome</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Categoria</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Endereço</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredPlaces.map((place) => {
+                    const cat = categories.find((c) => c.id === place.category_id);
+                    const emoji = getCategoryEmoji(cat);
+                    return (
+                      <tr key={place.id} className="transition hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-base shadow-sm"
+                              style={{ backgroundColor: `${cat?.color}15` }}
+                              title={cat?.name}
+                            >
+                              {emoji}
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">{place.name}</span>
                           </div>
-                          <span className="text-sm font-medium text-gray-700">{place.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-xs"
+                            style={{ backgroundColor: `${cat?.color}15`, color: cat?.color }}
+                          >
+                            <span>{emoji}</span>
+                            <span>{cat?.name ?? '—'}</span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{place.address}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end gap-1.5">
+                            <button
+                              onClick={() => startEdit(place)}
+                              className="rounded-lg p-2 text-gray-400 transition hover:bg-blue-50 hover:text-blue-600 active:scale-95"
+                              title="Editar local"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(place.id)}
+                              className="rounded-lg p-2 text-gray-400 transition hover:bg-rose-50 hover:text-rose-600 active:scale-95"
+                              title="Excluir local"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Touch Card View */}
+            <div className="block md:hidden divide-y divide-gray-100">
+              {filteredPlaces.map((place) => {
+                const cat = categories.find((c) => c.id === place.category_id);
+                const emoji = getCategoryEmoji(cat);
+                return (
+                  <div key={place.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-gray-50 transition">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-base">{emoji}</span>
+                        <h3 className="text-sm font-semibold text-gray-900 truncate leading-tight">{place.name}</h3>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
                         <span
-                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-xs"
+                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
                           style={{ backgroundColor: `${cat?.color}15`, color: cat?.color }}
                         >
-                          <span>{emoji}</span>
-                          <span>{cat?.name ?? '—'}</span>
+                          {cat?.name ?? 'Geral'}
                         </span>
-                      </td>
-                      <td className="hidden px-4 py-3 text-sm text-gray-500 md:table-cell">{place.address}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1.5">
-                          <button
-                            onClick={() => startEdit(place)}
-                            className="rounded-lg p-2 text-gray-400 transition hover:bg-blue-50 hover:text-blue-600"
-                            title="Editar local"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(place.id)}
-                            className="rounded-lg p-2 text-gray-400 transition hover:bg-rose-50 hover:text-rose-600"
-                            title="Excluir local"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <span className="truncate text-gray-400 max-w-[180px]">{place.address}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => startEdit(place)}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition active:scale-95"
+                        title="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(place.id)}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition active:scale-95"
+                        title="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
             {filteredPlaces.length === 0 && (
               <div className="py-12 text-center text-sm text-gray-400">
                 Nenhum local cadastrado até o momento. Clique em &quot;Novo local&quot; para adicionar.
@@ -1441,23 +1496,23 @@ export default function Admin({ onExit }: AdminProps) {
               <p className="mb-3 text-xs text-blue-100">
                 Cole o link do Google Maps, coordenadas (-4.947, -37.974) ou o nome do lugar para atualizar os campos:
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   placeholder="Cole o link do Google Maps ou digite o nome..."
                   value={autoFillInput}
                   onChange={(e) => setAutoFillInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAutoFill())}
-                  className="flex-1 rounded-xl border-0 bg-white/90 px-3.5 py-2 text-sm text-gray-800 outline-none placeholder:text-gray-400 focus:bg-white"
+                  className="flex-1 rounded-xl border-0 bg-white/90 px-3.5 py-2.5 text-sm text-gray-800 outline-none placeholder:text-gray-400 focus:bg-white"
                 />
                 <button
                   type="button"
                   onClick={handleAutoFill}
                   disabled={autoFilling}
-                  className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-gray-900 transition hover:bg-amber-300 disabled:opacity-50 shadow-sm"
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2.5 text-xs sm:text-sm font-bold text-gray-900 transition hover:bg-amber-300 disabled:opacity-50 shadow-sm active:scale-95"
                 >
                   {autoFilling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 fill-gray-900" />}
-                  Auto-Preencher
+                  <span>Auto-Preencher</span>
                 </button>
               </div>
             </div>
