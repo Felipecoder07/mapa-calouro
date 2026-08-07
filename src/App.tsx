@@ -5,6 +5,7 @@ import MapView from '@/components/MapView';
 import Sidebar from '@/components/Sidebar';
 import PlaceDetails from '@/components/PlaceDetails';
 import Admin from '@/components/Admin';
+import { SplashScreenTest } from '@/components/SplashScreenTest';
 import { UNIVERSITY } from '@/lib/constants';
 import { fetchCategories, fetchPlaces, fetchReviewsForPlaces } from '@/lib/api';
 import { haversineDistance, estimateDrivingTime, estimateWalkingTime, formatDistance, formatDuration } from '@/lib/distance';
@@ -794,6 +795,7 @@ export default function App() {
   return (
     <HashRouter>
       <Routes>
+        <Route path="/splash" element={<SplashScreenTest />} />
         <Route path="*" element={<MapApp />} />
       </Routes>
     </HashRouter>
