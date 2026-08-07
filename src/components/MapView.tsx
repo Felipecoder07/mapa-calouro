@@ -123,13 +123,15 @@ function MapController({
     }
   }, [route, map, suppressFit]);
 
-  // Fly to selected place when a place is clicked
+  // Fly to selected place ONLY when a new place is clicked
   useEffect(() => {
-    if (selectedPlace) {
+    if (selectedPlace && selectedPlace.id !== prevSelectedId.current) {
       prevSelectedId.current = selectedPlace.id;
-      const targetZoom = Math.max(map.getZoom(), 17.5);
+      map.stop();
+      map.closePopup();
+      const targetZoom = Math.max(map.getZoom(), 17);
       map.flyTo([selectedPlace.lat, selectedPlace.lng], targetZoom, { duration: 0.8 });
-    } else {
+    } else if (!selectedPlace) {
       prevSelectedId.current = null;
     }
   }, [selectedPlace, map]);
@@ -221,7 +223,6 @@ export default function MapView({
       maxZoom={22}
       minZoom={1}
       bounceAtZoomLimits={false}
-      zoomSnap={0.5}
       className="h-full w-full"
       zoomControl={false}
       attributionControl={false}
@@ -282,7 +283,7 @@ export default function MapView({
         icon={createUniversityIcon()}
         zIndexOffset={1000}
       >
-        <Popup>
+        <Popup closeButton={false}>
           <div className="text-center">
             <strong className="text-blue-700">{UNIVERSITY.shortName}</strong>
             <br />
@@ -297,7 +298,7 @@ export default function MapView({
           icon={createUserLocationIcon()}
           zIndexOffset={900}
         >
-          <Popup>
+          <Popup closeButton={false}>
             <strong>Sua localização</strong>
           </Popup>
         </Marker>
@@ -318,12 +319,13 @@ export default function MapView({
               click: (e) => {
                 const mapInstance = e.target._map;
                 if (mapInstance) {
-                  mapInstance.flyTo([place.lat, place.lng], Math.max(mapInstance.getZoom(), 17.5), { duration: 0.8 });
+                  mapInstance.stop();
+                  mapInstance.flyTo([place.lat, place.lng], Math.max(mapInstance.getZoom(), 17), { duration: 0.8 });
                 }
               },
             }}
           >
-            <Popup closeButton={false}>
+            <Popup closeButton={false} autoPan={false}>
               <div className="min-w-[170px] p-0.5">
                 <strong className="text-sm text-gray-900 leading-tight block mb-0.5">{place.name}</strong>
                 <span className="text-xs text-gray-500 font-medium">{category?.name}</span>

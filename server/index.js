@@ -167,7 +167,7 @@ app.post('/api/categories', requireAdminAuth, (req, res) => {
 
     const categories = db.prepare('SELECT * FROM categories').all();
     const newCategory = {
-      id: `cat-${Date.now()}`,
+      id: crypto.randomUUID(),
       name: cleanName,
       slug: sanitizeString(slug) || cleanName.toLowerCase().replace(/\s+/g, '-'),
       icon: sanitizeString(icon) || 'Building2',
@@ -237,7 +237,7 @@ app.post('/api/places', requireAdminAuth, (req, res) => {
     }
 
     const categories = db.prepare('SELECT * FROM categories').all();
-    const id = `place-${Date.now()}`;
+    const id = crypto.randomUUID();
     const created_at = new Date().toISOString();
     const photosJson = JSON.stringify(photos || []);
 
@@ -391,7 +391,7 @@ app.post('/api/reviews', (req, res) => {
     }
 
     const newReview = {
-      id: `rev-${Date.now()}`,
+      id: crypto.randomUUID(),
       place_id: sanitizeString(place_id),
       author: sanitizeString(author) || 'Anônimo',
       rating: numRating,

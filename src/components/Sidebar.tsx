@@ -48,32 +48,7 @@ export default function Sidebar({
     return counts;
   }, [places]);
 
-  const filteredPlaces = useMemo(() => {
-    let result = places;
-
-    if (selectedCategories.size > 0) {
-      result = result.filter((p) => {
-        const cat = p.category;
-        return cat && selectedCategories.has(cat.slug);
-      });
-    }
-
-    if (showFavoritesOnly) {
-      result = result.filter((p) => isFavorite(p.id));
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(query) ||
-          p.address.toLowerCase().includes(query) ||
-          p.description?.toLowerCase().includes(query)
-      );
-    }
-
-    return result;
-  }, [places, selectedCategories, searchQuery, showFavoritesOnly]);
+  const filteredPlaces = places;
 
   return (
     <div className="flex h-full flex-col bg-white">

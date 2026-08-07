@@ -414,7 +414,7 @@ function MapApp() {
       setRoute(result);
     } else {
       const fallbackDist = haversineDistance(start.lat, start.lng, target.lat, target.lng);
-      const fallbackDur = estimateDrivingTime(fallbackDist);
+      const fallbackDur = profile === 'foot' ? estimateWalkingTime(fallbackDist) : estimateDrivingTime(fallbackDist);
       setRoute({
         distance: fallbackDist,
         duration: fallbackDur,

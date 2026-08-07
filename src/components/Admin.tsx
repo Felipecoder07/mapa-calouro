@@ -1009,9 +1009,6 @@ export default function Admin({ onExit }: AdminProps) {
             <ArrowLeft className="h-3.5 w-3.5" />
             Voltar ao mapa
           </button>
-          <p className="mt-4 text-center text-xs text-gray-300">
-            Senha de demonstração: admin123
-          </p>
         </div>
       </div>
     );

@@ -42,8 +42,9 @@ export async function loginAdmin(password: string): Promise<boolean> {
     console.warn('Falha no login admin via API:', e);
   }
 
-  // Smart fallback for local/dev mode: if password matches admin123, allow login
-  if (password === 'admin123') {
+  // Fallback for standalone/frontend mode: checks against env variable VITE_ADMIN_PASSWORD
+  const expectedPass = import.meta.env.VITE_ADMIN_PASSWORD || import.meta.env.ADMIN_PASSWORD || 'admin123';
+  if (password === expectedPass) {
     sessionStorage.setItem(ADMIN_TOKEN_KEY, 'mock-admin-token');
     return true;
   }
