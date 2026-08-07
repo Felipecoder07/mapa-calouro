@@ -108,9 +108,9 @@ npm run test:e2e
 
 ## 📄 Documentação e Guias Técnicos
 
-- 📋 [Especificação de Requisitos de Software SRS (ESPECIFICACAO_REQUISITOS_SRS.md)](./docs/ESPECIFICACAO_REQUISITOS_SRS.md)
-- 🚀 [Guia Oficial de Deploy em Produção (GUIA_DEPLOY_PRODUCAO.md)](./docs/GUIA_DEPLOY_PRODUCAO.md)
-- 🔄 [Manutenção Automática do Supabase (MANUTENCAO_KEEPALIVE_SUPABASE.md)](./docs/MANUTENCAO_KEEPALIVE_SUPABASE.md)
+- 📋 **[Especificação de Requisitos de Software (SRS IEEE 830)](docs/ESPECIFICACAO_REQUISITOS_SRS.md)** — Documentação técnica completa de requisitos funcionais, não funcionais e regras de negócio.
+- 🚀 **[Guia Oficial de Deploy em Produção](docs/GUIA_DEPLOY_PRODUCAO.md)** — Passo a passo para publicação na Vercel e integração com o Supabase.
+- 🔄 **[Manutenção Automática do Supabase (Keep-Alive)](docs/MANUTENCAO_KEEPALIVE_SUPABASE.md)** — Guia de configuração do workflow no GitHub Actions para manter o banco relacional 24/7 sem pausa por inatividade.
 
 ---
 
