@@ -1,6 +1,6 @@
 # 📋 Documento de Especificação de Requisitos de Software
 ## Sistema: Mapa do Calouro - UFC Campus Russas
-**Versão:** 1.0.0 | **Data:** Agosto de 2026 | **Status:** Aprovado para Produção 
+**Versão:** 7.0 | **Data:** Agosto de 2026 | **Status:** Aprovado para Produção 
 
 ---
 
