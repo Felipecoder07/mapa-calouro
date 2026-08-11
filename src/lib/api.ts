@@ -43,15 +43,10 @@ export async function loginAdmin(password: string): Promise<boolean> {
     console.warn('Falha no login admin via API:', e);
   }
 
-  // Validação em ambiente local/desenvolvimento via variável de ambiente
-  const expectedPass = import.meta.env.VITE_ADMIN_PASSWORD || import.meta.env.ADMIN_PASSWORD || 'admin123';
-  if (password === expectedPass) {
-    sessionStorage.setItem(ADMIN_TOKEN_KEY, 'mock-admin-token');
-    return true;
-  }
-
+  // Sem fallback no frontend — a senha só é validada no servidor
   return false;
 }
+
 
 export async function fetchCategories(): Promise<Category[]> {
   if (isSupabaseConfigured && supabase) {
