@@ -75,14 +75,20 @@ export async function fetchCategories(): Promise<Category[]> {
 }
 
 export async function createCategory(category: Omit<Category, 'id' | 'sort_order'>): Promise<Category> {
+  const payload = {
+    id: crypto.randomUUID(),
+    ...category,
+  };
+
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
         .from('categories')
-        .insert(category)
+        .insert(payload)
         .select()
         .single();
       if (!error && data) return data;
+      if (error) console.error('[createCategory] ERRO SUPABASE:', error.message);
     } catch (e) {
       console.warn('FALHA SUPABASE: criando via SQLite API', e);
     }
@@ -166,16 +172,26 @@ export async function fetchPlaces(): Promise<Place[]> {
 }
 
 export async function createPlace(place: Omit<Place, 'id' | 'created_at' | 'category'>): Promise<Place> {
+  const payload = {
+    id: crypto.randomUUID(),
+    ...place,
+  };
+
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
         .from('places')
-        .insert(place)
+        .insert(payload)
         .select('*, category:categories(*)')
         .single();
       if (!error && data) return data;
+      if (error) {
+        console.error('[createPlace] ERRO SUPABASE:', error.code, error.message, error.details, error.hint);
+        throw new Error(`Supabase: ${error.message}`);
+      }
     } catch (e) {
-      console.warn('FALHA SUPABASE: criando via SQLite API', e);
+      console.error('[createPlace] FALHA SUPABASE:', e);
+      throw e;
     }
   }
 
@@ -333,14 +349,20 @@ export async function fetchReviewsForPlaces(placeIds: string[]): Promise<Map<str
 }
 
 export async function addReview(review: Omit<Review, 'id' | 'created_at'>): Promise<Review> {
+  const payload = {
+    id: crypto.randomUUID(),
+    ...review,
+  };
+
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
         .from('reviews')
-        .insert(review)
+        .insert(payload)
         .select()
         .single();
       if (!error && data) return data;
+      if (error) console.error('[addReview] ERRO SUPABASE:', error.message);
     } catch (e) {
       console.warn('FALHA SUPABASE: salvando avaliação via SQLite API', e);
     }
