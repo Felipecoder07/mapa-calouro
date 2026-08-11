@@ -7,6 +7,7 @@ import type { PlaceWithMeta, Category } from '@/types';
 
 interface SidebarProps {
   places: PlaceWithMeta[];
+  allPlaces?: PlaceWithMeta[];
   categories: Category[];
   selectedCategories: Set<string>;
   onToggleCategory: (slug: string) => void;
@@ -23,6 +24,7 @@ interface SidebarProps {
 
 export default function Sidebar({
   places,
+  allPlaces,
   categories,
   selectedCategories,
   onToggleCategory,
@@ -40,13 +42,14 @@ export default function Sidebar({
 
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    places.forEach((p) => {
+    const sourcePlaces = allPlaces || places;
+    sourcePlaces.forEach((p) => {
       if (p.category) {
         counts.set(p.category.slug, (counts.get(p.category.slug) || 0) + 1);
       }
     });
     return counts;
-  }, [places]);
+  }, [places, allPlaces]);
 
   const filteredPlaces = places;
 

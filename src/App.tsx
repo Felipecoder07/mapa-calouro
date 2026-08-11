@@ -466,6 +466,24 @@ function MapApp() {
     });
   }, [places, userLocation, distanceOrigin]);
 
+  const placesForCategoryCounts = useMemo(() => {
+    let result = placesWithDistance;
+    if (showFavoritesOnly) {
+      const favs = JSON.parse(localStorage.getItem('mapa_calouros_favorites') ?? '[]');
+      result = result.filter((p) => favs.includes(p.id));
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.address.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [placesWithDistance, searchQuery, showFavoritesOnly]);
+
   const filteredPlaces = useMemo(() => {
     let result = placesWithDistance;
     if (selectedCategories.size > 0) {
@@ -499,6 +517,7 @@ function MapApp() {
       <div className="hidden w-80 flex-shrink-0 border-r border-gray-100 md:block">
         <Sidebar
           places={filteredPlaces}
+          allPlaces={placesForCategoryCounts}
           categories={categories}
           selectedCategories={selectedCategories}
           onToggleCategory={handleToggleCategory}
@@ -523,6 +542,7 @@ function MapApp() {
         >
           <Sidebar
             places={filteredPlaces}
+            allPlaces={placesForCategoryCounts}
             categories={categories}
             selectedCategories={selectedCategories}
             onToggleCategory={handleToggleCategory}
