@@ -978,7 +978,7 @@ export default function Admin({ onExit }: AdminProps) {
 
   if (!authed) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-200/80 p-4">
+      <div className="flex h-full w-full items-center justify-center overflow-y-auto bg-slate-200/80 p-4">
         <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl border border-slate-300/50">
           <div className="mb-6 text-center">
             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-blue-100">
@@ -1022,7 +1022,7 @@ export default function Admin({ onExit }: AdminProps) {
   const currentLngNum = parseFloat(form.lng) || UNIVERSITY.lng;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12">
+    <div className="h-full w-full overflow-y-auto bg-gray-50 pb-12">
       {/* Header */}
       <header className="sticky top-0 z-20 border-b border-gray-100 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3.5 sm:py-4 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
