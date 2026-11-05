@@ -1,64 +1,81 @@
 # Mapa do Calouro — UFC Russas
 
-Guia web para ajudar estudantes e visitantes a localizar serviços e espaços da UFC Campus Russas e arredores. Reúne mapa, busca por categorias, detalhes de locais, favoritos, avaliações e consulta de rotas em uma interface responsiva.
+Criei o Mapa do Calouro para ajudar quem está chegando à UFC Russas a encontrar lugares e serviços do campus e da cidade. A ideia é reunir essas informações em um mapa: a pessoa busca o que precisa, consulta os detalhes do local e pode traçar uma rota até lá.
 
-**Projeto individual de Luiz Felipe Verissimo**, com uso de **Pen.dev e Claude** no desenvolvimento, conforme relato do autor. Conheça a [apresentação de portfólio](docs/APRESENTACAO.md) e o [registro de evidências](docs/PORTFOLIO.md), que distingue implementação, contribuição declarada e limites da validação.
+Desenvolvi o projeto individualmente, usando **Pen.dev e Claude** como apoio durante o desenvolvimento.
 
-![Mapa do Calouro em desktop, com nove locais do catálogo local e camada de satélite](docs/screenshots/01-mapa-desktop.png)
+![Mapa do Calouro com a lista de locais e a visão de satélite de Russas](docs/screenshots/01-mapa-desktop.png)
 
-Captura local de 05/11/2026, com snapshot do SQLite servido por interceptação no navegador; não comprova backend ou deploy. [Galeria, contexto e limitações](docs/SCREENSHOTS.md). Satélite: Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community.
+*Demonstração local com nove locais do banco SQLite. [Veja também as telas de busca e mobile](docs/SCREENSHOTS.md).*
 
-## Problema e solução
+<details>
+<summary>Sobre a captura e os créditos do mapa</summary>
 
-Quem chega ao campus precisa descobrir onde ficam espaços acadêmicos e serviços do cotidiano. O Mapa do Calouro organiza essas informações em uma interface geográfica: buscar um local, consultar seus detalhes e solicitar uma rota a partir da universidade ou da localização autorizada pelo usuário.
+Nesta captura, os dados do SQLite são fornecidos à interface por uma interceptação da API no navegador. Os detalhes da sessão estão no [registro das imagens](docs/SCREENSHOTS.md).
 
-O painel administrativo permite cadastrar e editar locais e categorias. O preenchimento por links do Google Maps usa extração de coordenadas e consultas externas; esse mecanismo não comprova IA generativa dentro do produto.
+Satélite: Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community.
 
-## Recursos presentes no código
+</details>
 
-- Mapa Leaflet com camadas clara, escura e de satélite.
-- Busca por nome/endereço, filtros por categoria e favoritos no navegador.
-- Detalhes dos locais, notas e comentários.
-- Consulta de rotas via OSRM, com seleção de origem e modos de deslocamento na interface.
-- Painel administrativo para gestão de locais e categorias.
-- Integração com Supabase, API Express/SQLite e armazenamento local, conforme configuração e operação.
+## O que dá para fazer
 
-As rotas dependem de serviço externo. A interface possui estimativa alternativa quando a consulta falha; não há comprovação de trânsito ao vivo, precisão de caminhos de pedestres ou desempenho de 60 fps. Dados salvos apenas no navegador não demonstram persistência compartilhada.
+- Encontrar locais pelo nome, endereço ou categoria.
+- Consultar informações, notas e comentários sobre cada lugar.
+- Salvar favoritos no navegador.
+- Solicitar rotas a partir da UFC ou da própria localização, com permissão de GPS.
+- Usar o mapa e os painéis em desktop ou celular.
+- Gerenciar locais e categorias pelo painel administrativo.
 
-## Tecnologias e estrutura
+No cadastro, também é possível preencher informações a partir de coordenadas ou links do Google Maps. Esse recurso extrai dados do link e faz consultas externas para ajudar no preenchimento.
 
-| Camada | Implementação |
+## Como o projeto funciona
+
+A interface usa **React, TypeScript e Tailwind CSS**, com **Leaflet** para o mapa e **OSRM** para consultar rotas.
+
+A camada de dados integra o **Supabase** e uma API local em **Express com SQLite**. Também há armazenamento no navegador como alternativa em algumas operações. Nesse modo, os dados ficam restritos ao navegador usado.
+
+As rotas dependem da disponibilidade do serviço externo. Quando a consulta falha, a aplicação pode exibir uma estimativa de distância e tempo.
+
+| Pasta | Conteúdo |
 | --- | --- |
-| Interface | React, TypeScript, Vite e Tailwind CSS |
-| Mapas e rotas | Leaflet, React-Leaflet e OSRM |
-| Dados | Supabase/PostgreSQL; Express e SQLite; fallback local |
-| Verificação | Vitest, Playwright e TypeScript |
-| Operação | Função de login em `api/` e workflow de manutenção no GitHub Actions |
+| `src/components/` | Mapa, busca, detalhes e painel administrativo |
+| `src/lib/` | Acesso aos dados, rotas, distâncias e favoritos |
+| `server/` | API local com Express e SQLite |
+| `api/` | Função serverless de login |
+| `supabase/migrations/` | Estrutura do banco |
+| `tests/` e `e2e/` | Testes com Vitest e Playwright |
+| `docs/` | Documentação e apresentação do projeto |
 
-`src/components/` contém a interface; `src/lib/`, acesso a dados e cálculos; `server/`, a API local; `supabase/migrations/`, a estrutura SQL; `tests/` e `e2e/`, os testes.
+## Uso de IA
 
-## Executar localmente
+Usei **Pen.dev e Claude** durante a construção do Mapa do Calouro. Esse uso faz parte do processo de desenvolvimento; as funcionalidades de mapa, busca e rotas são implementadas com as bibliotecas e os serviços descritos acima.
 
-Com Node.js e npm instalados, na pasta do projeto:
+Reuni o histórico de evolução, os arquivos relacionados às entregas e os detalhes sobre o uso de IA na [documentação do projeto](docs/PORTFOLIO.md).
+
+## Como rodar
+
+Com Node.js e npm instalados, execute na pasta do projeto:
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Abra o endereço exibido pelo Vite (normalmente `http://localhost:5173`). Sem Supabase e sem API local, a aplicação usa o fallback do navegador, cujo catálogo inicial de locais está vazio.
+Abra o endereço exibido pelo Vite, normalmente `http://localhost:5173`.
 
-Para usar a API SQLite, execute também, em outro terminal:
+Para usar o banco SQLite, inicie a API em outro terminal:
 
 ```bash
 npm run server
 ```
 
-O Vite encaminha `/api` para a porta `3001`. O servidor cria/usa `data/database.sqlite`. Para configurar Supabase, use os nomes de variáveis em [.env.example](.env.example): `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. Defina `ADMIN_PASSWORD` no ambiente do processo servidor; o script `server` não carrega automaticamente um arquivo `.env`.
+O servidor usa o arquivo `data/database.sqlite`, e o Vite encaminha as chamadas de `/api` para a porta `3001`. Sem Supabase ou API local, o catálogo inicial de locais no navegador fica vazio.
 
-No PowerShell, caso a política de scripts bloqueie `npm.ps1`, use `npm.cmd`. A revisão foi verificada com Node.js `v24.15.0`; isso não define uma versão mínima de compatibilidade.
+Para configurar o Supabase, use [.env.example](.env.example) como referência e defina `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` em um arquivo `.env.local`. A variável `ADMIN_PASSWORD` deve ser definida no ambiente do servidor, pois o comando `npm run server` não carrega o arquivo `.env` automaticamente.
 
-## Verificação
+No PowerShell, use `npm.cmd` caso a execução de `npm.ps1` esteja bloqueada.
+
+## Testes
 
 ```bash
 npm run typecheck
@@ -67,16 +84,19 @@ npm run build
 npm run test:e2e
 ```
 
-Na revisão de **05/11/2026**, `typecheck` passou e `npm test` passou com **57 testes em 11 arquivos**, na cópia de trabalho. Há testes com lógica simulada e servidor reconstruído para teste; isso não significa cobertura total. Consulte o [registro de validação](docs/PORTFOLIO.md#validação-desta-revisão). Os comandos de build e E2E acima são instruções, não uma declaração de aprovação nesta revisão.
+Na verificação de 05/11/2026, a checagem de tipos passou e os **57 testes de 11 arquivos do Vitest** foram aprovados. Parte dos testes usa simulações. O escopo da execução está no [registro de validação](docs/PORTFOLIO.md#validação-desta-revisão); build e testes de navegador não foram executados nessa verificação.
 
 ## Documentação
 
-- [Índice da documentação](docs/README.md)
-- [Apresentação final com imagens e texto para portfólio](docs/APRESENTACAO.md)
-- [Case de portfólio, contribuição e uso de IA](docs/PORTFOLIO.md)
-- [Seleção de screenshots e demonstração](docs/SCREENSHOTS.md)
+- [Apresentação do projeto](docs/APRESENTACAO.md)
+- [Histórico, contribuição e uso de IA](docs/PORTFOLIO.md)
+- [Screenshots desktop e mobile](docs/SCREENSHOTS.md)
 - [Especificação de requisitos](docs/ESPECIFICACAO_REQUISITOS_SRS.md)
-- [Guia de deploy existente](docs/GUIA_DEPLOY_PRODUCAO.md)
+- [Configuração de deploy](docs/GUIA_DEPLOY_PRODUCAO.md)
 - [Manutenção do Supabase](docs/MANUTENCAO_KEEPALIVE_SUPABASE.md)
 
-Os guias operacionais registram configuração proposta, não comprovam deploy ativo ou disponibilidade contínua. Antes de exposição pública, as políticas de escrita do Supabase e a autenticação da API precisam de revisão: o guia contém políticas permissivas e o servidor aceita um token de desenvolvimento. Esta revisão é documental e não altera esses mecanismos.
+**Antes de publicar uma instância:** a autenticação da API ainda aceita um token de desenvolvimento, e o guia de Supabase contém políticas de escrita permissivas. Esses pontos precisam ser revistos para uso público.
+
+---
+
+Desenvolvido por **Luiz Felipe Verissimo**.
