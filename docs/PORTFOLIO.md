@@ -29,7 +29,6 @@ O autor confirmou o nome **Luiz Felipe Verissimo**. Os 25 commits disponíveis e
 | Afirmação | Evidência disponível | Limite |
 | --- | --- | --- |
 | Uso de Pen.dev e Claude | Relato direto do autor em 05/11/2026 | Sem registros de sessões ou exemplos associados a entregas específicas |
-| Existe um prompt destinado ao Bolt | [Arquivo local](PROMPT_BOLT_GAMIFICACAO_TERRITORIOS.md) com requisitos de gamificação | Não comprova uso do Bolt; o autor informou Pen.dev e Claude |
 | Existem implementação e testes | `src/`, `server/`, `tests/` e `e2e/` | Não identifica a ferramenta responsável por cada alteração |
 | Preenchimento de cadastro por link | [Admin.tsx](../src/components/Admin.tsx), função `parseGoogleMapsInput` e consultas externas | Extração programática e geocodificação não equivalem a uso de LLM |
 
@@ -65,6 +64,12 @@ O argumento central é demonstrar o problema, a solução e decisões do autor. 
 - Build de produção, suíte Playwright completa, deploy, perfis reais de rota e métricas de desempenho não foram validados nesta revisão.
 - Três [capturas reais da interface](SCREENSHOTS.md) foram revisadas visualmente em desktop e viewport mobile, com snapshot local e API interceptada. A camada de satélite carregou; a padrão não carregou nas tentativas e a clara exibiu erro de chave de API. Não foram feitas alterações funcionais para corrigir essas camadas.
 - O servidor aceita token de desenvolvimento na autenticação e o guia de Supabase possui políticas de escrita permissivas. Os testes aprovados não constituem auditoria de segurança.
+
+### Verificação após remover a gamificação
+
+Em 05/11/2026, na cópia baseada em `d341dc0`, foram removidos o botão Conquista BETA, as duas rotas do protótipo, seus componentes e o prompt específico de gamificação. A checagem de tipos e o build de produção passaram. O build emitiu avisos sobre Browserslist desatualizado e tamanho do bundle.
+
+Uma verificação com Chromium confirmou que `/`, `/#/conquista` e `/#/territorios` exibem o mapa principal sem o botão de gamificação. Foram usadas respostas de API isoladas no navegador; isso não valida o backend. Os três screenshots foram atualizados. A suíte completa de testes não foi repetida nessa alteração.
 
 ## Alcance das evidências disponíveis
 

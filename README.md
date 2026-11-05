@@ -84,7 +84,7 @@ npm run build
 npm run test:e2e
 ```
 
-Na verificação de 05/11/2026, a checagem de tipos passou e os **57 testes de 11 arquivos do Vitest** foram aprovados. Parte dos testes usa simulações. O escopo da execução está no [registro de validação](docs/PORTFOLIO.md#validação-desta-revisão); build e testes de navegador não foram executados nessa verificação.
+Na verificação inicial de 05/11/2026, a checagem de tipos passou e os **57 testes de 11 arquivos do Vitest** foram aprovados. Após remover o protótipo de gamificação, a checagem de tipos e o build passaram, e a navegação foi conferida no Chromium. Parte dos testes usa simulações; os detalhes e o escopo estão no [registro de validação](docs/PORTFOLIO.md#validação-desta-revisão).
 
 ## Documentação
 

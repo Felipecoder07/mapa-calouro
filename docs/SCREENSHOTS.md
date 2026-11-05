@@ -19,9 +19,9 @@ Para o README, priorizar a capa. Para slides, usar capa, jornada e mobile. O pai
 | [Busca e detalhes desktop](screenshots/02-detalhes-desktop.png) | Jornada de consulta | 1440 × 900 |
 | [Detalhes mobile](screenshots/03-detalhes-mobile.png) | Slide de interface responsiva | 390 × 844 |
 
-Capturas de 05/11/2026 em `http://127.0.0.1:5174`, Chromium, na cópia de trabalho baseada em `5464314`. A sessão usa um snapshot dos nove locais do SQLite local por interceptação de `/api` no navegador; acesso ao Supabase bloqueado e avaliações substituídas por lista vazia. Os dados não foram inventados nem escritos no banco. Isso demonstra a interface, não a integração real com o backend.
+Capturas de 05/11/2026 em `http://127.0.0.1:5174`, Chromium, na cópia de trabalho baseada em `d341dc0`, após a remoção da gamificação. A sessão usa um snapshot dos nove locais do SQLite local por interceptação de `/api` no navegador; acesso ao Supabase bloqueado e avaliações substituídas por lista vazia. Os dados não foram inventados nem escritos no banco. Isso demonstra a interface, não a integração real com o backend.
 
-A camada escolhida é **Satélite (ArcGIS/Esri)**. O mapa padrão não carregou nas tentativas iniciais e a camada clara retornou imagens com “API key required”; essas tentativas foram descartadas da seleção. O botão “Conquista BETA” aparece porque pertence às alterações locais preexistentes; a captura não valida esse recurso.
+A camada escolhida é **Satélite (ArcGIS/Esri)**. O mapa padrão não carregou nas tentativas iniciais e a camada clara retornou imagens com “API key required”; essas tentativas foram descartadas da seleção. As capturas atuais já mostram a interface sem o botão de gamificação.
 
 Crédito das imagens de satélite, conforme a configuração da camada no projeto: **Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community**. O app desabilita a atribuição no mapa; manter este crédito junto às imagens ao utilizá-las em slides ou portfólio. A interface não foi alterada para a captura.
 

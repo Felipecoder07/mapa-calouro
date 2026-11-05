@@ -62,7 +62,7 @@ O projeto permite apresentar uma solução concreta e seu percurso técnico. Os 
 
 ## Contexto das imagens e referências
 
-Capturas de 05/11/2026 na cópia de trabalho baseada em `5464314`. Dados do SQLite servidos por interceptação da API no navegador; Supabase bloqueado e avaliações vazias. As imagens demonstram a interface, não o backend ou um deploy público. O botão “Conquista BETA” pertence a alterações locais preexistentes e não integra este case.
+Capturas de 05/11/2026 na cópia de trabalho baseada em `d341dc0`, após a remoção da gamificação. Dados do SQLite servidos por interceptação da API no navegador; Supabase bloqueado e avaliações vazias. As imagens demonstram a interface, não o backend ou um deploy público.
 
 **Satélite:** Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community. Manter o crédito ao reutilizar as imagens.
 
