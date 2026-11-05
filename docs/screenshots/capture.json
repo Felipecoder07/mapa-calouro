@@ -1,0 +1,15 @@
+{
+  "capturedAt": "2026-11-05T13:35:19.688Z",
+  "url": "http://127.0.0.1:5174/",
+  "source": "Snapshot somente leitura de data/database.sqlite; API interceptada no navegador; avaliações vazias; sem acesso ao Supabase.",
+  "places": 9,
+  "tiles": {
+    "total": 42,
+    "loaded": 42
+  },
+  "viewports": [
+    "1440x900",
+    "390x844"
+  ],
+  "scope": "Interface da cópia de trabalho; não valida backend, deploy ou aparelho físico."
+}

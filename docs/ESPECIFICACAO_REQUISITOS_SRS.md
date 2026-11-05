@@ -1,6 +1,7 @@
-# 📋 Documento de Especificação de Requisitos de Software
+# 📋 Documento de Especificação de Requisitos de Software 
+
 ## Sistema: Mapa do Calouro - UFC Campus Russas
-**Versão:** 7.0 | **Data:** Agosto de 2026 | **Status:** Aprovado para Produção 
+**Versão:** 7.0 | **Data:** Agosto de 2026 | **Status:** Aprovado para Produção | 
 
 ---
 
@@ -61,7 +62,7 @@ O **Mapa do Calouro** é uma aplicação web progressiva e reativa (Single Page 
 
 * **[RF-07] Persistência de Favoritos:**
   - O usuário deve poder favoritar/desfavoritar qualquer local com 1 toque na estrela.
-  - Os favoritos devem ser salvos no `localStorage` do navegador e ser filtráveis rapidamente no botão de filtro "Apenas Favoritos ".
+  - Os favoritos devem ser salvos no `localStorage` do navegador e ser filtráveis rapidamente no botão de filtro "Apenas Favoritos".
 
 ---
 
@@ -166,5 +167,3 @@ O **Mapa do Calouro** é uma aplicação web progressiva e reativa (Single Page 
 > - **[RN-05] Prevenção de Conflito de Animação do Mapa:** Antes de aproximar a câmera (`flyTo`), o sistema deve parar transições anteriores (`map.stop()`) e fechar balões (`map.closePopup()`).
 
 ---
-
-

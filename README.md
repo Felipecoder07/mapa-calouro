@@ -1,119 +1,82 @@
-<div align="center">
+# Mapa do Calouro — UFC Russas
 
-# 🗺️ Mapa do Calouro - UFC Campus Russas
+Guia web para ajudar estudantes e visitantes a localizar serviços e espaços da UFC Campus Russas e arredores. Reúne mapa, busca por categorias, detalhes de locais, favoritos, avaliações e consulta de rotas em uma interface responsiva.
 
-  <p align="center">
-    <strong>Guia geográfico, comunitário e interativo de navegação espacial para a Universidade Federal do Ceará.</strong>
-  </p>
+**Projeto individual de Luiz Felipe Verissimo**, com uso de **Pen.dev e Claude** no desenvolvimento, conforme relato do autor. Conheça a [apresentação de portfólio](docs/APRESENTACAO.md) e o [registro de evidências](docs/PORTFOLIO.md), que distingue implementação, contribuição declarada e limites da validação.
 
-  <p align="center">
-    <a href="https://reactjs.org/"><img src="https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 18" /></a>
-    <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
-    <a href="https://vitejs.dev/"><img src="https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" /></a>
-    <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" /></a>
-    <a href="https://supabase.com/"><img src="https://img.shields.io/badge/Supabase-Database-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" /></a>
-    <a href="https://vercel.com/"><img src="https://img.shields.io/badge/Vercel-Deployment-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel" /></a>
-  </p>
+![Mapa do Calouro em desktop, com nove locais do catálogo local e camada de satélite](docs/screenshots/01-mapa-desktop.png)
 
-</div>
+Captura local de 05/11/2026, com snapshot do SQLite servido por interceptação no navegador; não comprova backend ou deploy. [Galeria, contexto e limitações](docs/SCREENSHOTS.md). Satélite: Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community.
 
----
+## Problema e solução
 
-## 📖 Sobre o Projeto
+Quem chega ao campus precisa descobrir onde ficam espaços acadêmicos e serviços do cotidiano. O Mapa do Calouro organiza essas informações em uma interface geográfica: buscar um local, consultar seus detalhes e solicitar uma rota a partir da universidade ou da localização autorizada pelo usuário.
 
-O **Mapa do Calouro** é uma aplicação web de alto desempenho (Single Page Application - SPA) desenvolvida para auxiliar estudantes, professores e visitantes no **Campus da Universidade Federal do Ceará (UFC Russas)**.
+O painel administrativo permite cadastrar e editar locais e categorias. O preenchimento por links do Google Maps usa extração de coordenadas e consultas externas; esse mecanismo não comprova IA generativa dentro do produto.
 
-A plataforma oferece visualização espacial por mapas vetoriais e de satélite HD, busca de locais por categorias (alimentação, bibliotecas, salas, xerox, RU, moradias, transporte), cálculo de rotas em tempo real (pedestre e veículo), avaliações comunitárias e um **Painel Administrativo Completo com assistente inteligente por link do Google Maps**.
+## Recursos presentes no código
 
----
+- Mapa Leaflet com camadas clara, escura e de satélite.
+- Busca por nome/endereço, filtros por categoria e favoritos no navegador.
+- Detalhes dos locais, notas e comentários.
+- Consulta de rotas via OSRM, com seleção de origem e modos de deslocamento na interface.
+- Painel administrativo para gestão de locais e categorias.
+- Integração com Supabase, API Express/SQLite e armazenamento local, conforme configuração e operação.
 
-## ✨ Principais Funcionalidades
+As rotas dependem de serviço externo. A interface possui estimativa alternativa quando a consulta falha; não há comprovação de trânsito ao vivo, precisão de caminhos de pedestres ou desempenho de 60 fps. Dados salvos apenas no navegador não demonstram persistência compartilhada.
 
-### 🗺️ Mapeamento Interativo HD
-- **Vetor Padrão (OpenStreetMap)**: Visualização leve, precisa e veloz.
-- **Satélite HD (Esri ArcGIS Imagery)**: Imagens de alta definição do campus.
-- **Modo Escuro (CartoDB Dark)**: Visualização confortável para navegação noturna.
+## Tecnologias e estrutura
 
-### 📱 Experiência Mobile Nativa (60fps)
-- **Painéis Interativos (Bottom Sheets)**: Deslize por gestos táteis suaves.
-- **Aproximação Suave (FlyTo Camera)**: Transição fluida sem tremores ao selecionar locais.
-- **Balões Limpos**: Marcadores informativos elegantes com ação de detalhes rápida.
+| Camada | Implementação |
+| --- | --- |
+| Interface | React, TypeScript, Vite e Tailwind CSS |
+| Mapas e rotas | Leaflet, React-Leaflet e OSRM |
+| Dados | Supabase/PostgreSQL; Express e SQLite; fallback local |
+| Verificação | Vitest, Playwright e TypeScript |
+| Operação | Função de login em `api/` e workflow de manutenção no GitHub Actions |
 
-### 🚗 / 🚶 Rotas Inteligentes em Tempo Real (OSRM API)
-- **Modo Pedestre (A pé)**: Rotas calculadas utilizando passeios e travessias do campus.
-- **Modo Automóvel (Carro/Moto)**: Respeita o sentido das vias e trânsito urbano.
-- **Origem Flexível**: Alterne instantaneamente entre a **Portaria da UFC** e a sua **Posição GPS em Tempo Real**.
+`src/components/` contém a interface; `src/lib/`, acesso a dados e cálculos; `server/`, a API local; `supabase/migrations/`, a estrutura SQL; `tests/` e `e2e/`, os testes.
 
-### ⚙️ Painel de Gestão Admin
-- **Cadastro Simplificado**: Assistente de auto-preenchimento automático ao colar links do Google Maps ou coordenadas.
-- **Categorias Personalizadas**: Criador de categorias com paleta de cores e seletor de emojis.
-- **Gestão de Avaliações**: Gerenciamento de notas de 1 a 5 estrelas e comentários da comunidade.
+## Executar localmente
 
----
+Com Node.js e npm instalados, na pasta do projeto:
 
-## 🛠️ Tecnologias Utilizadas
-
-| Tecnologia | Descrição |
-| :--- | :--- |
-| **React 18** | Biblioteca para interfaces reativas |
-| **TypeScript** | Tipagem estática rigorosa para prevenção de erros |
-| **Vite** | Build tool ultrarrápido para desenvolvimento e produção |
-| **Tailwind CSS** | Estilização moderna e responsiva |
-| **Leaflet & React-Leaflet** | Motor de renderização de mapas interativos |
-| **OSRM API** | Serviço de cálculo de rotas urbanas e de pedestres |
-| **Supabase** | Banco de dados PostgreSQL relacional na nuvem |
-| **GitHub Actions** | Automação diária de Keep-Alive contra inatividade |
-
----
-
-## 🚀 Como Rodar o Projeto
-
-### 1. Clonar o Repositório
 ```bash
-git clone https://github.com/Felipecoder07/mapa-calouro.git
-cd mapa-calouro
+npm ci
+npm run dev
 ```
 
-### 2. Instalar Dependências
+Abra o endereço exibido pelo Vite (normalmente `http://localhost:5173`). Sem Supabase e sem API local, a aplicação usa o fallback do navegador, cujo catálogo inicial de locais está vazio.
+
+Para usar a API SQLite, execute também, em outro terminal:
+
 ```bash
-npm install
+npm run server
 ```
 
-### 3. Executar o Projeto
-```bash
-# Iniciar o servidor e a interface juntos:
-npm run dev:all
-```
+O Vite encaminha `/api` para a porta `3001`. O servidor cria/usa `data/database.sqlite`. Para configurar Supabase, use os nomes de variáveis em [.env.example](.env.example): `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. Defina `ADMIN_PASSWORD` no ambiente do processo servidor; o script `server` não carrega automaticamente um arquivo `.env`.
 
-Acesse no seu navegador: `http://localhost:5173`
+No PowerShell, caso a política de scripts bloqueie `npm.ps1`, use `npm.cmd`. A revisão foi verificada com Node.js `v24.15.0`; isso não define uma versão mínima de compatibilidade.
 
----
-
-## 🧪 Testes e Qualidade
-
-O projeto possui suíte completa de verificação:
+## Verificação
 
 ```bash
-# Checagem estrita de tipos TypeScript (0 erros)
 npm run typecheck
-
-# Testes unitários e de integração
 npm test
-
-# Testes End-to-End (E2E) com Playwright
+npm run build
 npm run test:e2e
 ```
 
----
+Na revisão de **05/11/2026**, `typecheck` passou e `npm test` passou com **57 testes em 11 arquivos**, na cópia de trabalho. Há testes com lógica simulada e servidor reconstruído para teste; isso não significa cobertura total. Consulte o [registro de validação](docs/PORTFOLIO.md#validação-desta-revisão). Os comandos de build e E2E acima são instruções, não uma declaração de aprovação nesta revisão.
 
-## 📄 Documentação e Guias Técnicos
+## Documentação
 
-- 📋 **[Especificação de Requisitos de Software (SRS IEEE 830)](docs/ESPECIFICACAO_REQUISITOS_SRS.md)** — Documentação técnica completa de requisitos funcionais, não funcionais e regras de negócio.
-- 🚀 **[Guia Oficial de Deploy em Produção](docs/GUIA_DEPLOY_PRODUCAO.md)** — Passo a passo para publicação na Vercel e integração com o Supabase.
-- 🔄 **[Manutenção Automática do Supabase (Keep-Alive)](docs/MANUTENCAO_KEEPALIVE_SUPABASE.md)** — Guia de configuração do workflow no GitHub Actions para manter o banco relacional 24/7 sem pausa por inatividade.
+- [Índice da documentação](docs/README.md)
+- [Apresentação final com imagens e texto para portfólio](docs/APRESENTACAO.md)
+- [Case de portfólio, contribuição e uso de IA](docs/PORTFOLIO.md)
+- [Seleção de screenshots e demonstração](docs/SCREENSHOTS.md)
+- [Especificação de requisitos](docs/ESPECIFICACAO_REQUISITOS_SRS.md)
+- [Guia de deploy existente](docs/GUIA_DEPLOY_PRODUCAO.md)
+- [Manutenção do Supabase](docs/MANUTENCAO_KEEPALIVE_SUPABASE.md)
 
----
-
-<div align="center">
-  <sub>Desenvolvido com ❤️ para a comunidade acadêmica da <strong>Universidade Federal do Ceará - Campus Russas</strong>.</sub>
-</div>
+Os guias operacionais registram configuração proposta, não comprovam deploy ativo ou disponibilidade contínua. Antes de exposição pública, as políticas de escrita do Supabase e a autenticação da API precisam de revisão: o guia contém políticas permissivas e o servidor aceita um token de desenvolvimento. Esta revisão é documental e não altera esses mecanismos.

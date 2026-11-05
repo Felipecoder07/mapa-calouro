@@ -11,6 +11,7 @@ import { fetchCategories, fetchPlaces, fetchReviewsForPlaces } from '@/lib/api';
 import { haversineDistance, estimateDrivingTime, estimateWalkingTime, formatDistance, formatDuration } from '@/lib/distance';
 import { fetchRoute, type RouteInfo, type RouteProfile } from '@/lib/mapUtils';
 import type { PlaceWithMeta, Category } from '@/types';
+import { TerritoryApp } from '@/components/territory/TerritoryApp';
 
 const getCategoryEmoji = (category?: Category | null) => {
   if (!category) return '📍';
@@ -608,6 +609,17 @@ function MapApp() {
 
               {/* Right — Quick Actions Pill */}
               <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl bg-white/95 p-1.5 shadow-lg backdrop-blur-md border border-gray-100 flex-shrink-0">
+                {/* Botão de Conquista de Territórios (Protótipo Gamificado) */}
+                <button
+                  onClick={() => navigate('/conquista')}
+                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-sm shadow-purple-500/25 transition hover:scale-105 active:scale-95"
+                  title="Abrir Protótipo de Conquista de Território"
+                >
+                  <span className="text-xs">🎮</span>
+                  <span className="hidden sm:inline">Conquista</span>
+                  <span className="rounded bg-purple-400/30 px-1 py-0.2 text-[9px] font-black uppercase text-purple-200">BETA</span>
+                </button>
+
                 {/* Mobile-only: Locais button */}
                 <button
                   onClick={() => {
@@ -816,6 +828,8 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route path="/splash" element={<SplashScreenTest />} />
+        <Route path="/conquista" element={<TerritoryApp />} />
+        <Route path="/territorios" element={<TerritoryApp />} />
         <Route path="*" element={<MapApp />} />
       </Routes>
     </HashRouter>
