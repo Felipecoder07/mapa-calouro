@@ -64,13 +64,14 @@ O histórico de commits, o escopo exato das verificações e o detalhamento sobr
 
 ```mermaid
 flowchart LR
-    Estudante[Estudante / Visitante] --> Web[Interface React + TypeScript + Leaflet]
-    Admin[Administrador] --> Web
-    Web --> OSRM[OSRM · Cálculo de rotas]
-    Web --> Supabase[(Supabase / PostgreSQL)]
-    Web --> API[API Local Express]
-    API --> SQLite[(SQLite · data/database.sqlite)]
-    Web --> Auth[Serverless Login · /api/admin]
+    Estudante["Estudante e Visitante"] --> Web["Interface React + TypeScript + Leaflet"]
+    Admin["Administrador"] --> Web
+    Web --> OSRM["OSRM (Cálculo de rotas)"]
+    Web --> Supabase[("Supabase (PostgreSQL)")]
+    Web --> API["API Local Express"]
+    API --> SQLite[("SQLite (database.sqlite)")]
+    Web --> LocalStorage[("Fallback no navegador")]
+    Web --> Auth["Login Serverless (/api/admin)"]
 ```
 
 A interface concentra a renderização cartográfica, o estado de busca e a seleção de rotas. Na persistência, a aplicação suporta tanto uma operação conectada ao **Supabase** quanto a execução local apoiada por **Express e SQLite**, além de manter favoritos e contingência no armazenamento do navegador.
