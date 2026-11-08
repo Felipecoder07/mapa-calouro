@@ -51,9 +51,9 @@ O Mapa do Calouro centraliza essas informações sobre o mapa de Russas, permiti
 
 ## Minha contribuição e uso de IA
 
-Desenvolvi o Mapa do Calouro individualmente, utilizando **Pen.dev** e **Claude** como ferramentas de apoio ao longo do ciclo de engenharia. Minha atuação concentrou-se na definição do produto, nas decisões arquiteturais, na integração entre camadas e na revisão técnica do código entregue.
+Desenvolvi o Mapa do Calouro individualmente, utilizando **Pen.dev**, **Bolt** e **Claude** como ferramentas de apoio ao longo do ciclo de engenharia. Minha atuação concentrou-se na definição do produto, nas decisões arquiteturais, na integração entre camadas e na revisão técnica do código entregue.
 
-- **Prototipação e interface (`Pen.dev` e `Claude`):** uso de IA como apoio para estruturar a disposição visual dos componentes em React e Tailwind CSS, ajustando a experiência de mapa em tela cheia, os painéis laterais e o comportamento responsivo entre desktop e mobile.
+- **Prototipação e interface (`Claude` e `Bolt`):** uso de IA como apoio para estruturar a disposição visual dos componentes em React e Tailwind CSS, ajustando a experiência de mapa em tela cheia, os painéis laterais e o comportamento responsivo entre desktop e mobile.
 - **Implementação de regras e integrações (`Claude`):** apoio na escrita e refatoração dos módulos de integração com o Leaflet, consumo do serviço de rotas OSRM, extração de coordenadas de links do Google Maps (`parseGoogleMapsInput`) e comunicação com Supabase e SQLite.
 - **Direção técnica e curadoria de escopo:** avaliação crítica das soluções propostas pelas ferramentas para garantir tratamento de falhas (como o fallback quando a rota externa não responde ou quando um banco remoto não está configurado) e remoção de funcionalidades experimentais que desviavam do objetivo central do guia.
 - **Verificação e qualidade:** condução da checagem estática de tipos, execução e manutenção dos testes automatizados e validação visual dos fluxos em navegador.
